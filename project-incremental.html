@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Incremental Spatial Partitioning | Tin Vu</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container header-content">
+      <a class="site-name" href="index.html">Tin Vu</a>
+      <nav aria-label="Main navigation"><a href="index.html#work">Projects</a><a href="index.html#research">Publications</a><a href="index.html#about">Experience</a></nav>
+    </div>
+  </header>
+  <main id="main" class="container">
+    <section class="section project-detail">
+      <h1>Incremental Spatial Partitioning</h1>
+      <p>I developed a framework for incrementally maintaining large spatial datasets organized in distributed file-system blocks. It supports batches of insertions and deletions while selectively reorganizing partitions instead of rebuilding the entire dataset.</p>
+      <p><a href="presentation-incremental.html">View the presentation</a></p>
+
+      <h2>The problem</h2>
+      <p>Block-level spatial partitioning is useful for large analytical queries, but static layouts degrade as new records arrive and old records are deleted. Repartitioning the entire dataset after every update is expensive; postponing maintenance indefinitely can leave overlapping or poorly organized partitions that make later queries slower. Record-level indexes support updates differently, but do not necessarily offer the same tradeoffs for block-oriented analytics.</p>
+      <p>The challenge is to decide <em>which</em> partitions are worth rewriting, given limited maintenance I/O, while still making updates visible to queries.</p>
+
+      <h2>What I implemented</h2>
+      <p>I formalized the partition optimization problem and showed it is NP-hard, then separated partition selection from physical reorganization. I developed a block-based model that estimates range-query processing cost and the benefit of reorganizing partitions, and implemented three strategies: R*-tree-inspired partitioning (R*P), LSM-tree-inspired partitioning (LSMP), and cost-based partitioning (CBP).</p>
+      <p>R*P uses insertion and splitting ideas from R*-trees; LSMP writes new components and uses a merge policy; CBP uses the estimated query benefit to select partitions for reorganization. These strategies share the incremental framework but make different ingestion and maintenance decisions.</p>
+
+      <h2>How updates and reorganization work</h2>
+      <ol>
+        <li><strong>Flush a batch.</strong> New records or deletion markers are appended to existing files or written as new partitions, depending on the strategy. The paper describes publishing a new master-file version after the flush completes.</li>
+        <li><strong>Select candidates.</strong> Partition metadata, such as bounding rectangles and sizes, guides selection under a reorganization budget without scanning the entire dataset.</li>
+        <li><strong>Reorganize selected data.</strong> The framework rewrites selected partitions, applies deletion markers, and can use a static spatial partitioner to build the replacement layout.</li>
+      </ol>
+      <p>CBP uses a greedy selection heuristic: it considers the estimated benefit of adding a partition to the current group, then recomputes benefits as the group changes. The value of reorganizing overlapping partitions together is not necessarily the sum of their individual benefits. The NP-hardness result is why the heuristic should not be presented as a guarantee of a globally optimal selection.</p>
+
+      <h2>Correctness and performance tradeoffs</h2>
+      <p>The key tension is between ingestion cost now and query cost later. Small, fast flushes avoid rewriting large amounts of data, but can leave overlapping partitions or deletion markers that increase read work. More reorganization can improve the layout while consuming I/O and competing with incoming updates. The estimated benefit also depends on the modeled range-query size and partition metadata; a different workload may value a different layout.</p>
+      <p>Updates must not become partially visible while a flush is being published, and deletion markers must be respected before they are physically removed during reorganization. The paper's master-file publication and reorganization stages describe how the framework addresses these concerns; they should not be read as a claim about crash recovery or transactional guarantees beyond the design described there.</p>
+
+      <h2>Evaluation and what I would change</h2>
+      <p>We compared estimated range-query costs and reorganization benefits with measured results, and evaluated R*P, LSMP, and CBP on large real spatial datasets. The experiments include insert-only and insert-plus-delete workloads, measuring ingestion time, partition quality, and range-query performance. On the paper's MS-Buildings experiment, CBP's ingestion time fell between R*P and LSMP; its advantage depends on the workload and reorganization policy, not on a universal speedup.</p>
+      <p>Given more time, I would study workload-aware query-size estimates, bursty updates, the effects of distribution drift, and the interaction between maintenance budgets and tail query latency. I would also add fault-injection and differential tests for publication and deletion boundaries. These are proposed extensions, not claims about the existing test suite.</p>
+      <p class="project-links"><a href="https://par.nsf.gov/servlets/purl/10313679">Paper (PVLDB, 2022)</a><a href="https://bitbucket.org/tvu032/beast-tv/src/inc-update/beast-spark/src/main/java/edu/ucr/cs/bdlab/beast/operations/update/">Source code</a></p>
+      <p><a href="index.html#work">Back to selected projects</a></p>
+    </section>
+  </main>
+</body>
+</html>

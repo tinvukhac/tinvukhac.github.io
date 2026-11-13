@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>R-Grove: Spatial Partitioning for Distributed Data Systems | Tin Vu</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container header-content">
+      <a class="site-name" href="index.html">Tin Vu</a>
+      <nav aria-label="Main navigation"><a href="index.html#work">Projects</a><a href="index.html#research">Publications</a><a href="index.html#about">Experience</a></nav>
+    </div>
+  </header>
+  <main id="main" class="container">
+    <section class="section project-detail">
+      <h1>R-Grove: Spatial Partitioning for Distributed Data Systems</h1>
+      <p>I developed the R-Grove, R*-Grove, and RR*-Grove indexes to adapt R-tree ideas to distributed spatial partitioning. The Grove family is available in <a href="https://bitbucket.org/bdlabucr/beast/src/master/">Beast</a>, an open-source geospatial processing system built on Apache Spark.</p>
+      <p><a href="presentation-rgrove.html">View the presentation</a></p>
+
+      <h2>The problem</h2>
+      <p>A distributed spatial system needs partitions that balance work across machines while retaining enough spatial locality to avoid scanning unrelated data. A common approach builds a traditional R-tree on a sample and uses its leaf bounding boxes as partition boundaries. But R-trees are designed for a different setting: they allow partially filled nodes to accommodate future insertions, and leaf boxes built from a sample do not necessarily cover the whole input space.</p>
+      <p>This creates two problems. Uneven leaf occupancy can produce imbalanced partitions, while an unsampled record may fall outside every sampled bounding box. Expanding boxes to accommodate such records can introduce overlaps. Some spatial analytics can tolerate overlapping data partitions; others need disjoint regions to combine partial results correctly.</p>
+
+      <h2>What I implemented</h2>
+      <p>I adapted the split strategies of the R-tree, R*-tree, and RR*-tree into R-Grove, R*-Grove, and RR*-Grove. Rather than insert sample points one at a time into a conventional tree, the algorithms recursively split the sample from the top down. This allows a much higher minimum sample occupancy than the usual incremental R-tree split permits.</p>
+      <p>The key constraint is that each intermediate group must still be divisible into valid leaf sizes. For a sample group of size <code>S</code> and target minimum and maximum leaf sizes <code>m</code> and <code>M</code>, the 2018 paper uses <code>ceil(S/M) &lt;= floor(S/m)</code> to check whether a valid division is possible. R*-Grove and RR*-Grove evaluate split candidates under that constraint; R-Grove adjusts split groups as needed. This is a guarantee about the <em>sample</em> partitioning, not a promise that every final on-disk partition has identical size.</p>
+
+      <h2>From the sample to distributed partitions</h2>
+      <ol>
+        <li><strong>Sample.</strong> Draw a manageable sample to estimate the spatial distribution.</li>
+        <li><strong>Compute boundaries.</strong> Recursively split the sample using the selected Grove method, checking that the resulting groups can reach the target leaf sizes.</li>
+        <li><strong>Assign the full input.</strong> Use the computed partitioning to route records into spatial partitions for distributed storage and processing.</li>
+      </ol>
+      <p>For disjoint-space partitioning, R*-Grove and RR*-Grove retain split axes and split positions in a search structure instead of relying only on sample bounding boxes. The split-defined regions cover the input space, including places absent from the sample. An extended geometry may still need to be replicated to every region it overlaps; disjoint <em>regions</em> do not imply that each geometry is stored only once.</p>
+      <p>R*-Grove also offers a balance factor and can combine a sample with a storage-size histogram to account for records whose byte sizes differ. That distinction matters when balancing records by count would leave uneven amounts of data on workers.</p>
+
+      <h2>Correctness and performance tradeoffs</h2>
+      <p>The hardest design tradeoff is balancing occupancy, spatial shape, and coverage at the same time. A split that looks attractive geometrically may leave a group that cannot be divided into valid leaf sizes. Conversely, tight sample-based boxes can look compact while failing to cover unsampled space. For operations that depend on disjoint regions, coverage and boundary handling are correctness requirements, not merely quality metrics.</p>
+      <p>More balanced sample partitions do not by themselves eliminate skew in the full dataset, particularly with uneven record sizes or a poor sample. Covering the full space may enlarge regions, while replication of large geometries can increase storage and query work. Boundary construction itself also costs time: the methods make different tradeoffs between simpler splits and more expensive sorting.</p>
+
+      <h2>Evaluation and what I would change</h2>
+      <p>In the 2018 paper, we compared the three Grove variants with corresponding black-box R-tree implementations and an STR baseline on an 84 GB OpenStreetMap point dataset using a 12-node Hadoop cluster. We measured indexing and boundary-construction time, total area and margin, disk utilization, and partition-size variation. The study found no single winner across all metrics: the gray-box variants improved disk utilization, while their space-covering regions could have larger margins than compact sample-based boxes. These results describe that experiment, not a benchmark of every Beast workload.</p>
+      <p>Given more time, I would evaluate sample sensitivity, variable-sized geometries, partition-boundary cases, and downstream range-query and join costs across more distributions. I would also compare the cost of rebuilding partitions with incremental maintenance as data changes. These are proposed extensions, not claims about tests already performed.</p>
+      <p class="project-links"><a href="https://doi.org/10.1145/3459637.3481897">Beast paper (ACM CIKM, 2021)</a><a href="https://doi.org/10.1145/3274895.3274984">R-Grove paper (ACM SIGSPATIAL, 2018)</a><a href="https://doi.org/10.3389/fdata.2020.00028">R*-Grove paper (Frontiers in Big Data, 2020)</a><a href="https://bitbucket.org/bdlabucr/beast/src/master/">Source code</a></p>
+      <p><a href="index.html#work">Back to selected projects</a></p>
+    </section>
+  </main>
+</body>
+</html>

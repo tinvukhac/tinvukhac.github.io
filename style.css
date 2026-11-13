@@ -1,0 +1,81 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #17212b;
+  background: #fff;
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: 1.5rem; }
+body { margin: 0; font-size: 16px; line-height: 1.6; }
+a { color: #14528b; text-underline-offset: 3px; }
+a:hover { color: #092e50; }
+a:focus-visible { outline: 3px solid #8cb4d8; outline-offset: 3px; }
+.skip-link { position: absolute; top: -5rem; left: 1rem; background: #fff; padding: .5rem; z-index: 1; }
+.skip-link:focus { top: 1rem; }
+.container { width: min(100% - 3rem, 820px); margin-inline: auto; }
+.site-header { border-bottom: 1px solid #dce2e7; }
+.header-content { min-height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.site-name { color: #17212b; font-weight: 700; text-decoration: none; }
+nav { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; }
+nav a { font-size: .9rem; }
+
+h1, h2, h3, p { margin-top: 0; }
+h1, h2, h3 { line-height: 1.25; }
+h1 { margin-bottom: .15rem; font-size: clamp(2.2rem, 5vw, 2.8rem); letter-spacing: -.025em; }
+h2 { font-size: 1.4rem; margin-bottom: 1rem; }
+h3 { font-size: 1.05rem; margin-bottom: .25rem; }
+.intro { padding: 2rem 0 1.75rem; }
+.intro-overview { display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: start; gap: 1.4rem; margin-bottom: 1rem; }
+.profile-photo { width: 128px; height: 128px; object-fit: cover; border-radius: 4px; }
+.role { margin-bottom: .85rem; color: #435465; font-size: 1.1rem; font-weight: 600; }
+.summary { max-width: 760px; margin-bottom: 0; font-size: 1.05rem; }
+.summary + .summary { margin-top: .75rem; }
+.profile-links { display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; font-weight: 600; }
+
+.section { padding: 1.75rem 0; border-top: 1px solid #dce2e7; }
+.section-intro { margin-bottom: 1rem; }
+.entry-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.4rem; }
+.entry { display: grid; grid-template-columns: 80px minmax(0, 1fr); align-items: start; gap: .8rem; }
+.project-image { display: block; width: 80px; height: 60px; border: 1px solid #dce2e7; border-radius: 3px; }
+.entry p { margin-bottom: .3rem; }
+.entry p:not(.project-links) { margin-bottom: .65rem; }
+#work .entry p:not(.project-links) { text-align: justify; }
+.project-contributions { margin: 0 0 .65rem; padding-left: 1.3rem; }
+.project-links { display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
+.project-detail { border-top: 0; }
+.project-detail h1 { margin-bottom: 1rem; }
+.project-detail h2 { margin: 1.4rem 0 .6rem; font-size: 1.2rem; }
+.project-detail li { margin-bottom: .4rem; }
+.project-detail .project-links { margin-bottom: 1rem; }
+#research h3 { margin: 1.2rem 0 .5rem; }
+#research h4 { margin: .9rem 0 .35rem; font-size: 1rem; }
+.publication-list, .selected-publications, .experience-list, .award-list { margin: 0; padding-left: 1.3rem; }
+.selected-publications li { margin-bottom: .3rem; }
+.publication-list li { margin-bottom: .85rem; }
+.publication-list li:last-child, .experience-list li:last-child { margin-bottom: 0; }
+.publication-list a { font-weight: 600; }
+.publication-list span { display: block; color: #46596a; font-size: .92rem; }
+.publication-list .venue { color: #17212b; }
+.experience-list { margin-bottom: 1rem; }
+.experience-list li { margin-bottom: .3rem; }
+.work-list li { margin-bottom: .85rem; }
+.work-list p { margin: .25rem 0 0; }
+.work-list .work-heading { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: 1rem; margin: 0; }
+.work-date { padding-left: .5rem; text-align: right; }
+.work-date::before { content: "2019 and 2020"; display: block; height: 0; overflow: hidden; visibility: hidden; }
+.award-list li { margin-bottom: .3rem; }
+.award-list li:last-child { margin-bottom: 0; }
+.section > p:last-child { margin-bottom: 0; }
+.footer { border-top: 1px solid #dce2e7; padding: 1.2rem 0 2rem; color: #46596a; font-size: .9rem; }
+.footer p { margin: 0; }
+
+@media (max-width: 600px) {
+  .container { width: calc(100% - 2rem); }
+  .header-content { align-items: flex-start; flex-direction: column; padding: .8rem 0; gap: .3rem; }
+  nav { gap: .4rem 1rem; }
+  .intro { padding-top: 1.5rem; }
+  .intro-overview { grid-template-columns: 88px minmax(0, 1fr); gap: 1rem; }
+  .profile-photo { width: 88px; height: 88px; }
+  .entry-list { gap: 1.2rem; }
+}

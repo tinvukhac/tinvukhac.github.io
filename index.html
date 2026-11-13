@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Tin Vu is an applied scientist and computer science PhD working on distributed spatial databases, query optimization, and scalable data systems.">
+  <meta name="theme-color" content="#ffffff">
+  <title>Tin Vu | Distributed Spatial Databases</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container header-content">
+      <a class="site-name" href="#top">Tin Vu</a>
+      <nav aria-label="Main navigation">
+        <a href="#work">Projects</a>
+        <a href="#research">Publications</a>
+        <a href="#about">Experience</a>
+        <a href="resume.pdf">Resume</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="container">
+    <section class="intro" id="top" aria-labelledby="name">
+      <div class="intro-overview">
+        <img class="profile-photo" src="images/tin-vu.jpg" alt="Tin Vu" width="320" height="320">
+        <div>
+          <h1 id="name">Tin Vu</h1>
+          <p class="role">Distributed Database Systems | Geospatial Computing | Query Optimization</p>
+          <p class="summary">Hi, I'm Tin! I'm an Applied Scientist at Microsoft with a PhD in Computer Science from UC Riverside, where I was advised by <a href="https://www.cs.ucr.edu/~eldawy/">Ahmed Eldawy</a>.</p>
+          <p class="summary">My work focuses on distributed spatial databases, query optimization, spatial joins, and indexing, including learned approaches to spatial partitioning, join optimization, and sampling.</p>
+          <p class="summary">I enjoy building database systems and contributing to open source. I've worked on <a href="https://asterixdb.apache.org/">Apache AsterixDB</a>, implementing optimized spatial joins, and <a href="https://bitbucket.org/bdlabucr/beast/src/master/">Beast</a>, developing spatial indexing and partitioning techniques.</p>
+          <p class="summary">My research has appeared in ACM SIGMOD, PVLDB, The VLDB Journal, ACM SIGSPATIAL, and other database and geospatial computing venues.</p>
+        </div>
+      </div>
+      <div class="profile-links">
+        <a href="https://www.linkedin.com/in/tinvukhac/">LinkedIn</a>
+        <a href="https://github.com/tinvukhac">GitHub</a>
+        <a href="https://scholar.google.com/citations?hl=en&amp;user=ZpTB-kkAAAAJ&amp;view_op=list_works&amp;sortby=pubdate">Google Scholar</a>
+      </div>
+    </section>
+
+    <section class="section" id="work">
+      <h2>Selected projects</h2>
+      <div class="entry-list">
+        <article class="entry">
+          <img class="project-image" src="images/spatial-join.svg" alt="" width="96" height="72">
+          <div><h3><a href="project-asterixdb.html">Optimized Spatial Joins in Apache AsterixDB</a></h3>
+            <p>I implemented optimized spatial join processing in <a href="https://asterixdb.apache.org/">Apache AsterixDB</a>, an open-source distributed database.</p>
+            <p><strong>Key contributions:</strong></p>
+            <ul class="project-contributions">
+              <li>Implemented partition-based spatial merge joins.</li>
+              <li>Added spatial partitioning hints and optimizer rules for choosing the optimized join path.</li>
+              <li>Supported SQL++ spatial predicates including intersection, containment, and distance.</li>
+              <li>Added static and dynamic partitioning strategies, optimizer-plan tests, and runtime tests.</li>
+            </ul>
+            <p>Our SIGSPATIAL 2026 paper evaluates a broader spatial integration effort. In a local synthetic benchmark, the optimized spatial join reduced median time from <strong>151.056 seconds to 0.380 seconds</strong> compared with the same AsterixDB build with the spatial rewrite disabled.</p>
+            <p class="project-links"><a href="https://www.cs.ucr.edu/~eldawy/publications/26_SIGSPATIAL_AsterixDB_Industry.pdf">Paper (ACM SIGSPATIAL, 2026)</a><strong>Best Industry Paper Award</strong><a href="https://doi.org/10.1145/3486189.3490018">Paper (ACM SIGSPATIAL SpatialAPI, 2021)</a><a href="https://github.com/apache/asterixdb/commit/4f1090dde3d5034a90ee1a23d5d536a09372292c">Source code</a></p>
+          </div>
+        </article>
+        <article class="entry">
+          <img class="project-image" src="images/spatial-index.svg" alt="" width="96" height="72">
+          <div><h3><a href="project-rgrove.html">R-Grove: Spatial Partitioning for Distributed Data Systems</a></h3>
+            <p>I developed the R-Grove, R*-Grove and RR*-Grove indexes for <a href="https://bitbucket.org/bdlabucr/beast/src/master/">Beast</a>, an open-source geospatial processing system built on Apache Spark. We studied how R-tree techniques could be adapted to partition large spatial datasets across machines. The resulting Grove family includes R-Grove, R*-Grove, and RR*-Grove. These methods aim to produce spatially useful partitions while supporting distributed processing.</p>
+            <p>R*-Grove adapts R*-tree splitting techniques to improve partition quality and uses a balance factor to control differences in partition sizes. It can combine a sample with a storage-size histogram to account for records of different sizes. Our experiments evaluated partition quality and query performance on large spatial datasets.</p>
+            <p class="project-links"><a href="https://doi.org/10.1145/3459637.3481897">Beast paper (ACM CIKM, 2021)</a><a href="https://doi.org/10.1145/3274895.3274984">R-Grove paper (ACM SIGSPATIAL, 2018)</a><a href="https://doi.org/10.3389/fdata.2020.00028">R*-Grove paper (Frontiers in Big Data, 2020)</a><a href="https://bitbucket.org/bdlabucr/beast/src/master/">Source code</a></p>
+          </div>
+        </article>
+        <article class="entry">
+          <img class="project-image" src="images/incremental-partitioning.svg" alt="" width="96" height="72">
+          <div><h3><a href="project-incremental.html">Incremental Spatial Partitioning</a></h3>
+            <p>I developed a framework for incrementally maintaining large spatial datasets. It supports bulk insertions and deletions while organizing data in distributed file-system blocks. Rather than rebuilding every partition, the framework selects partitions to reorganize within a given budget. I formalized this partition-selection problem and showed that it is NP-hard.</p>
+            <p>My cost model estimates range-query processing costs to guide reorganization as data changes. I implemented and compared three strategies inspired by R*-trees, LSM-trees, and cost-based optimization. Experiments on large real datasets evaluated partitioning time, query throughput, and partition quality.</p>
+            <p class="project-links"><a href="https://par.nsf.gov/servlets/purl/10313679">Paper (PVLDB, 2022)</a><a href="https://bitbucket.org/tvu032/beast-tv/src/inc-update/beast-spark/src/main/java/edu/ucr/cs/bdlab/beast/operations/update/">Source code</a></p>
+          </div>
+        </article>
+        <article class="entry">
+          <img class="project-image" src="images/query-optimizer.svg" alt="" width="96" height="72">
+          <div><h3><a href="project-learned-joins.html">Learned Query Optimizer for Spatial Join</a></h3>
+            <p>I developed a learned query optimizer for distributed spatial joins. The project addresses the difficulty of choosing a join algorithm for datasets with different spatial distributions and partitioning. The models use dataset summaries and features describing the relationship between the join inputs. The initial optimizer estimates join cardinality and the number of candidate comparisons, and predicts which join algorithm to use.</p>
+            <p>My later framework extends this work to choose a partitioning strategy and tune the number of partitions and plane-sweep direction. I evaluated the models against baselines using synthetic and real spatial datasets. I also released datasets, code, and baseline models to support further research.</p>
+            <p class="project-links"><a href="https://doi.org/10.1007/s00778-024-00836-1">Paper (The VLDB Journal, 2024)</a><a href="https://doi.org/10.1145/3511808.3557712">Paper (ACM CIKM, 2022)</a><a href="https://doi.org/10.1145/3474717.3484217">Paper (ACM SIGSPATIAL, 2021)</a><a href="https://github.com/tinvukhac/learned-spatial-join">Source code (2024)</a><a href="https://github.com/tinvukhac/sjml-resources">Source code (2021–22)</a></p>
+          </div>
+        </article>
+        <article class="entry">
+          <img class="project-image" src="images/partitioning.svg" alt="" width="96" height="72">
+          <div><h3><a href="project-learned-partitioning.html">Learning-Based Spatial Partitioning</a></h3>
+            <p>I developed a learning-based approach for choosing how to partition a spatial dataset. The goal was to select a suitable technique based on the input distribution without physically partitioning the dataset with every candidate method. In offline training, I generated datasets with diverse distributions and evaluated six partitioning techniques against four quality metrics. I summarized the datasets using histograms and measures of spatial skew, then trained models on those summaries and quality results.</p>
+            <p>For a new dataset, the trained model predicts a partitioning technique for a chosen quality metric. The accompanying code includes tools to prepare data, train models, and apply a selector with Beast. My experiments compared prediction accuracy with a baseline on synthetic and real spatial data.</p>
+            <p class="project-links"><a href="https://doi.org/10.1145/3402126">Paper (ACM Transactions on Spatial Algorithms and Systems, 2020)</a><a href="https://github.com/tinvukhac/deep-spatial-partitioning">Source code</a></p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="research">
+      <h2>Publications</h2>
+      <p class="section-intro"><a href="https://scholar.google.com/citations?hl=en&amp;user=ZpTB-kkAAAAJ&amp;view_op=list_works&amp;sortby=pubdate">Google Scholar profile</a>.</p>
+      <h3>Selected publications</h3>
+      <ul class="selected-publications">
+        <li><a href="#pub-asterixdb">Geospatial Support in Apache AsterixDB</a> (ACM SIGSPATIAL, 2026) · <strong>Best Industry Paper Award</strong></li>
+        <li><a href="#pub-optimizer">A Learning-Based Framework for Spatial Join Processing</a> (The VLDB Journal, 2024)</li>
+        <li><a href="#pub-incremental">Incremental Partitioning for Efficient Spatial Data Analytics</a> (PVLDB, 2022)</li>
+        <li><a href="#pub-rstar">R*-Grove: Balanced Spatial Partitioning for Large-Scale Datasets</a> (Frontiers in Big Data, 2020)</li>
+        <li><a href="#pub-rgrove">R-Grove: Growing a Family of R-Trees in the Big-Data Forest</a> (ACM SIGSPATIAL, 2018)</li>
+      </ul>
+      <h3>All publications</h3>
+      <h4>2026</h4>
+      <ul class="publication-list">
+        <li id="pub-asterixdb"><a href="https://www.cs.ucr.edu/~eldawy/publications/26_SIGSPATIAL_AsterixDB_Industry.pdf">Geospatial Support in Apache AsterixDB: Holistic Integration of Spatial and Non-Spatial Data</a><span>Ahmed Eldawy, Mehnaz Tabassum Mahin, Tomal Majumder, Akil Sevim, Suryaa Charan Shivakumar, Vassilis J. Tsotras, <strong>Tin Vu</strong>, Ian Maxon &amp; Michael J. Carey · <strong class="venue">ACM SIGSPATIAL</strong>, 2026 · <strong>Best Industry Paper Award</strong></span></li>
+      </ul>
+      <h4>2024</h4>
+      <ul class="publication-list">
+        <li id="pub-optimizer"><a href="https://doi.org/10.1007/s00778-024-00836-1">A Learning-Based Framework for Spatial Join Processing: Estimation, Optimization and Tuning</a><span><strong>Tin Vu</strong>, Alberto Belussi, Sara Migliorini &amp; Ahmed Eldawy · <strong class="venue">The VLDB Journal</strong>, 2024</span></li>
+      </ul>
+      <h4>2022</h4>
+      <ul class="publication-list">
+        <li><a href="https://doi.org/10.1145/3511808.3557712">Towards a Learned Cost Model for Distributed Spatial Join: Data, Code &amp; Models</a><span><strong>Tin Vu</strong>, Alberto Belussi, Sara Migliorini &amp; Ahmed Eldawy · <strong class="venue">ACM CIKM</strong>, 2022</span></li>
+        <li><a href="https://doi.org/10.1145/3548732.3548736">Spatial Data Generators</a><span><strong>Tin Vu</strong>, Sara Migliorini, Ahmed Eldawy &amp; Alberto Belussi · <strong class="venue">Spatial Gems</strong>, 2022 · <strong>Best Paper Award (SpatialGems 2019)</strong></span></li>
+        <li id="pub-incremental"><a href="https://doi.org/10.14778/3494124.3494150">Incremental Partitioning for Efficient Spatial Data Analytics</a><span><strong>Tin Vu</strong>, Ahmed Eldawy, Vagelis Hristidis &amp; Vassilis J. Tsotras · <strong class="venue">PVLDB</strong>, 2022</span></li>
+      </ul>
+      <h4>2021</h4>
+      <ul class="publication-list">
+        <li><a href="https://doi.org/10.1145/3486189.3490018">A Brief Introduction to Geospatial Big Data Analytics with Apache AsterixDB</a><span>Akil Sevim, Mehnaz Tabassum Mahin, <strong>Tin Vu</strong>, Ian Maxon, Ahmed Eldawy, Michael J. Carey &amp; Vassilis J. Tsotras · <strong class="venue">ACM SIGSPATIAL Workshop on APIs and Libraries for Geospatial Analytics</strong>, 2021</span></li>
+        <li><a href="https://doi.org/10.1145/3474717.3484217">A Learned Query Optimizer for Spatial Join</a><span><strong>Tin Vu</strong>, Alberto Belussi, Sara Migliorini &amp; Ahmed Eldawy · <strong class="venue">ACM SIGSPATIAL</strong>, 2021</span></li>
+        <li><a href="https://doi.org/10.1145/3459637.3481897">Beast: Scalable Exploratory Analytics on Spatio-temporal Data</a><span>Ahmed Eldawy, Vagelis Hristidis, Saheli Ghosh, Majid Saeedan, Akil Sevim, A. B. Siddique, Samriddhi Singla, Ganesh Sivaram, <strong>Tin Vu</strong> &amp; Yaming Zhang · <strong class="venue">ACM CIKM</strong>, 2021</span></li>
+      </ul>
+      <h4>2020</h4>
+      <ul class="publication-list">
+        <li><a href="https://doi.org/10.1145/3397536.3422201">Noise Prediction for Geocoding Queries using Word Geospatial Embedding and Bidirectional LSTM</a><span><strong>Tin Vu</strong>, Solluna Liu, Renzhong Wang &amp; Kumarswamy Valegerepura · <strong class="venue">ACM SIGSPATIAL</strong>, 2020</span></li>
+        <li><a href="https://doi.org/10.1145/3397536.3422351">SpiderWeb: A Spatial Data Generator on the Web</a><span>Puloma Katiyar, <strong>Tin Vu</strong>, Ahmed Eldawy, Sara Migliorini &amp; Alberto Belussi · <strong class="venue">ACM SIGSPATIAL</strong>, 2020</span></li>
+        <li id="pub-rstar"><a href="https://doi.org/10.3389/fdata.2020.00028">R*-Grove: Balanced Spatial Partitioning for Large-Scale Datasets</a><span><strong>Tin Vu</strong> &amp; Ahmed Eldawy · <strong class="venue">Frontiers in Big Data</strong>, 2020</span></li>
+        <li><a href="https://arxiv.org/abs/2008.06831">DeepSampling: Selectivity Estimation with Predicted Error and Response Time</a><span><strong>Tin Vu</strong> &amp; Ahmed Eldawy · <strong class="venue">ACM SIGKDD DeepSpatial Workshop</strong>, 2020</span></li>
+        <li><a href="https://doi.org/10.1145/3402126">Using Deep Learning for Big Spatial Data Partitioning</a><span><strong>Tin Vu</strong>, Alberto Belussi, Sara Migliorini &amp; Ahmed Eldawy · <strong class="venue">ACM Transactions on Spatial Algorithms and Systems</strong>, 2020</span></li>
+      </ul>
+      <h4>2019</h4>
+      <ul class="publication-list">
+        <li><a href="https://doi.org/10.1145/3377000.3377005">UCR-STAR: The UCR Spatio-temporal Active Repository</a><span>Saheli Ghosh, <strong>Tin Vu</strong>, Mehrad Amin Eskandari &amp; Ahmed Eldawy · <strong class="venue">SIGSPATIAL Special</strong>, 2019</span></li>
+        <li><a href="https://doi.org/10.1145/3299869.3300104">Deep Query Optimization</a><span><strong>Tin Vu</strong> · <strong class="venue">ACM SIGMOD</strong>, 2019</span></li>
+      </ul>
+      <h4>2018</h4>
+      <ul class="publication-list">
+        <li id="pub-rgrove"><a href="https://doi.org/10.1145/3274895.3274984">R-Grove: Growing a Family of R-Trees in the Big-Data Forest</a><span><strong>Tin Vu</strong> &amp; Ahmed Eldawy · <strong class="venue">ACM SIGSPATIAL</strong>, 2018</span></li>
+      </ul>
+      <h4>2015</h4>
+      <ul class="publication-list">
+        <li><a href="https://doi.org/10.1109/SNPD.2015.7176209">BFC: High-Performance Distributed Big-File Cloud Storage Based on Key-Value Store</a><span>Thanh Trung Nguyen, <strong>Tin Khac Vu</strong> &amp; Minh Nguyen · <strong class="venue">IEEE/ACIS SNPD</strong>, 2015</span></li>
+      </ul>
+    </section>
+
+    <section class="section" id="skills">
+      <h2>Technical skills</h2>
+      <p>I learn and apply the tools and technologies needed for each project, building on the skills demonstrated in my research and engineering work.</p>
+    </section>
+
+    <section class="section" id="about">
+      <h2>Experience &amp; education</h2>
+      <h3>Experience</h3>
+      <ul class="experience-list work-list">
+        <li>
+          <p class="work-heading"><span><strong>Microsoft</strong> · Applied Scientist</span><span class="work-date">2021 - Present</span></p>
+          <p class="work-heading"><span>Software Engineer Intern</span><span class="work-date">2019 and 2020</span></p>
+          <p>Developed query understanding models to improve Bing Maps geocoding quality.</p>
+        </li>
+        <li>
+          <p class="work-heading"><span><strong>Environmental Systems Research Institute (Esri)</strong> · Software Development Engineer Intern</span><span class="work-date">2019</span></p>
+          <p>Worked in the ArcGIS GeoDatabase group, applying parallel processing to improve Utility Network performance and scalability. Earned 2nd Place overall and the Best Presentation Award at the Esri Intern Hackathon.</p>
+        </li>
+        <li>
+          <p class="work-heading"><span><strong>VNG Corporation</strong> · Data Engineer</span><span class="work-date">2014 - 2016</span></p>
+          <p>Developed a database system for an online game service serving five million customers.</p>
+        </li>
+      </ul>
+      <h3>Education</h3>
+      <ul class="experience-list">
+        <li><strong>PhD in Computer Science</strong> · University of California, Riverside<br>Advisor: <a href="https://www.cs.ucr.edu/~eldawy/">Ahmed Eldawy</a></li>
+        <li><strong>BS in Computer Science</strong> · Hanoi University of Science and Technology</li>
+      </ul>
+    </section>
+
+    <section class="section" id="awards">
+      <h2>Awards</h2>
+      <ul class="award-list">
+        <li>2nd Place and Best Presentation Award, Esri Weekend of Innovation Intern Hackathon, 2019</li>
+        <li>Dean's Distinguished Fellowship, College of Engineering, University of California, Riverside (2016 - 2017)</li>
+        <li>NSF Student Travel Awards (SIGSPATIAL 2017, SIGSPATIAL 2018, SIGSPATIAL 2019)</li>
+        <li>1st Prize, Microsoft Start-up Students Contest (10 teams in the final round), April 2013</li>
+        <li>1st Prize, Samsung SmartTV Development Contest, October 2013</li>
+        <li>1st Prize, WOWZAPP 2012, worldwide hackathon for Windows 8, Microsoft (ranked 1st among 82 teams), November 2012</li>
+        <li>Certificate of Merit for graduating with a Very Good degree, Hanoi University of Science and Technology, July 2013</li>
+        <li>Government-sponsored Scholarship, granted annually based on academic performance, Ministry of Education and Training (2008 - 2013)</li>
+        <li>PVFCCo Scholarship: Encourage Scholarship for outstanding students, PetroVietnam Fertilizers &amp; Chemicals Corporation, Vietnam Oil and Gas Group (2011 - 2012)</li>
+        <li>Acer Scholarship for outstanding students, Acer Inc., 2010</li>
+        <li>Itochu Scholarship for outstanding students, Itochu Corporation, Japan, 2009</li>
+      </ul>
+    </section>
+
+  </main>
+
+  <footer class="container footer">
+    <p>© Tin Vu · <a href="https://www.linkedin.com/in/tinvukhac/">LinkedIn</a> · <a href="https://github.com/tinvukhac">GitHub</a> · <a href="https://scholar.google.com/citations?hl=en&amp;user=ZpTB-kkAAAAJ&amp;view_op=list_works&amp;sortby=pubdate">Google Scholar</a></p>
+  </footer>
+</body>
+</html>

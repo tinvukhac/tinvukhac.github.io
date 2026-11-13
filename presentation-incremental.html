@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Incremental Spatial Partitioning | Presentation</title>
+  <link rel="stylesheet" href="presentation.css">
+</head>
+<body>
+  <div class="deck">
+    <header class="topbar"><a href="project-incremental.html">← Incremental partitioning project</a><span>Tin Vu · Spatial data systems</span></header>
+    <main>
+      <section class="slide" id="intro" aria-labelledby="title-intro">
+        <p class="eyebrow">A technical story</p>
+        <h1 id="title-intro">Incremental spatial partitioning</h1>
+        <p class="lead">Maintaining distributed spatial data as records are inserted and deleted.</p>
+        <p class="author">Tin Vu</p>
+        <p class="small">Use the arrow keys or the controls below to navigate.</p>
+      </section>
+      <section class="slide" id="problem" aria-labelledby="title-problem">
+        <p class="eyebrow">01 · The problem</p>
+        <h2 id="title-problem">Spatial datasets change, but full rebuilds are expensive</h2>
+        <div class="two-col">
+          <div class="card"><h3>Block-level analytics</h3><p>Distributed file-system blocks support large analytical scans, but traditional static partitioning does not naturally handle ongoing updates.</p></div>
+          <div class="card"><h3>Record-level structures</h3><p>Other systems support individual updates and selective queries, yet make different tradeoffs for large analytical workloads.</p></div>
+        </div>
+        <p class="callout"><strong>Goal:</strong> support bulk insertions and deletions without reorganizing the entire dataset after every update.</p>
+      </section>
+      <section class="slide" id="contribution" aria-labelledby="title-contribution">
+        <p class="eyebrow">02 · My contribution</p>
+        <h2 id="title-contribution">Selectively reorganize partitions under a budget</h2>
+        <div class="three-col">
+          <div class="card"><h3>Formalize</h3><p>I formulated partition optimization for incremental spatial data and showed that the problem is NP-hard.</p></div>
+          <div class="card"><h3>Estimate</h3><p>I developed a block-based model to estimate range-query processing costs as partitions change.</p></div>
+          <div class="card"><h3>Implement</h3><p>I implemented and compared three strategies for selecting partitions to reorganize.</p></div>
+        </div>
+      </section>
+      <section class="slide" id="execution" aria-labelledby="title-execution">
+        <p class="eyebrow">03 · Framework</p>
+        <h2 id="title-execution">Separate selection from physical reorganization</h2>
+        <div class="flow">
+          <div class="step"><span class="number">01</span><h3>Receive updates</h3><p>Handle batches of inserted and deleted records.</p></div>
+          <div class="step"><span class="number">02</span><h3>Assess partitions</h3><p>Consider existing partitions and the effect of changes on query cost.</p></div>
+          <div class="step"><span class="number">03</span><h3>Select</h3><p>Choose partitions for reorganization within the available budget.</p></div>
+          <div class="step"><span class="number">04</span><h3>Reorganize</h3><p>Physically reorganize selected data in distributed file-system blocks.</p></div>
+        </div>
+        <p class="small">Selection and physical reorganization are separate subproblems; the framework does not need to rebuild every partition.</p>
+      </section>
+      <section class="slide" id="strategies" aria-labelledby="title-strategies">
+        <p class="eyebrow">04 · Partition selection</p>
+        <h2 id="title-strategies">Three strategies, different decisions</h2>
+        <div class="three-col">
+          <div class="card"><h3>R*-tree inspired</h3><p>Uses ideas from R*-tree insertion and splitting to guide partition maintenance.</p></div>
+          <div class="card"><h3>LSM-tree inspired</h3><p>Applies an LSM-style merge policy to maintain partitions.</p></div>
+          <div class="card"><h3>Cost based</h3><p>Uses the range-query cost model to choose reorganization under the budget.</p></div>
+        </div>
+        <p class="callout">The framework makes the tradeoff explicit: spend update work now to improve future query performance.</p>
+      </section>
+      <section class="slide" id="evaluation" aria-labelledby="title-evaluation">
+        <p class="eyebrow">05 · Evaluation</p>
+        <h2 id="title-evaluation">Measure maintenance and query performance together</h2>
+        <div class="two-col">
+          <div class="card"><h3>What was measured</h3><p>Experiments on large real datasets evaluated partitioning time, query throughput, and partition quality.</p></div>
+          <div class="card"><h3>What the comparison shows</h3><p>The paper compares the proposed strategies with each other and with existing approaches; reported outcomes depend on the workload and budget.</p></div>
+        </div>
+        <p class="small">A lower maintenance cost is useful only if the resulting query performance remains acceptable.</p>
+      </section>
+      <section class="slide" id="future" aria-labelledby="title-future">
+        <p class="eyebrow">06 · Further directions</p>
+        <h2 id="title-future">Adapt reorganization to changing workloads</h2>
+        <div class="three-col">
+          <div class="card"><h3>Workload awareness</h3><p>Explore how observed query patterns could influence future reorganization choices.</p></div>
+          <div class="card"><h3>Changing data</h3><p>Study how distribution drift and bursty updates affect the maintenance budget.</p></div>
+          <div class="card"><h3>Validation</h3><p>Compare estimated query costs with observed costs across workloads.</p></div>
+        </div>
+        <p class="small">These are possible directions, not claims about the existing implementation.</p>
+      </section>
+      <section class="slide" id="references" aria-labelledby="title-references">
+        <p class="eyebrow">References</p>
+        <h2 id="title-references">Explore the work</h2>
+        <div class="references">
+          <p><a href="project-incremental.html">Project page</a></p>
+          <p><a href="https://par.nsf.gov/servlets/purl/10313679">Incremental Partitioning for Efficient Spatial Data Analytics</a><br>PVLDB, 2022</p>
+          <p><a href="https://bitbucket.org/tvu032/beast-tv/src/inc-update/beast-spark/src/main/java/edu/ucr/cs/bdlab/beast/operations/update/">Source code</a></p>
+        </div>
+      </section>
+    </main>
+    <div class="progress" aria-hidden="true"><span id="progress"></span></div>
+    <nav class="controls" aria-label="Presentation navigation" hidden><span id="status" role="status" aria-live="polite"></span><div class="buttons"><button id="previous" type="button">Previous</button><button id="next" type="button">Next</button></div></nav>
+  </div>
+  <script src="presentation.js"></script>
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimized Spatial Joins in Apache AsterixDB | Presentation</title>
+  <link rel="stylesheet" href="presentation.css">
+  <style>
+    .slide pre { overflow-x: auto; padding: 1rem; background: #f2f7f8; font-size: clamp(.8rem, 1.25vw, 1rem); line-height: 1.5; }
+    .slide figure { margin: .25rem 0 0; }
+    .experiment-chart { display: block; max-width: 100%; max-height: 43vh; height: auto; object-fit: contain; }
+    .slide figcaption { margin-top: .35rem; font-size: .85rem; color: #526977; }
+    .comparison-metric { font-size: clamp(1.5rem, 3vw, 2.5rem); line-height: 1.2; font-weight: 800; color: #155969; }
+    @media (max-width: 700px) { .experiment-chart { max-height: none; } }
+    @media print { .experiment-chart { max-height: 40vh; } }
+  </style>
+</head>
+<body>
+  <div class="deck">
+    <header class="topbar">
+      <a href="project-asterixdb.html">← AsterixDB project</a>
+      <span>Tin Vu · Spatial data systems</span>
+    </header>
+    <main>
+      <section class="slide" id="intro" aria-labelledby="title-intro">
+        <p class="eyebrow">Spatial data systems</p>
+        <h1 id="title-intro">Optimized spatial joins in Apache AsterixDB</h1>
+        <p class="lead">From SQL++ spatial predicates to distributed plane sweep, with local experiments.</p>
+        <p class="author">Tin Vu</p>
+        <p class="small">Use the arrow keys or the controls below to navigate.</p>
+      </section>
+
+      <section class="slide" id="problem" aria-labelledby="title-problem">
+        <p class="eyebrow">01 · The problem</p>
+        <h2 id="title-problem">Spatial joins need more than an equality key</h2>
+        <div class="three-col">
+          <div class="card"><h3>Nested loop</h3><p>Broadcast one input and test pairs. Useful for small inputs, but expensive when both grow.</p></div>
+          <div class="card"><h3>Bounding boxes</h3><p>Cheaper than exact geometry predicates, but a filter alone still considers the pairs.</p></div>
+          <div class="card"><h3>Index lookup</h3><p>Useful for selective inputs; repeated probes can become expensive for larger joins.</p></div>
+        </div>
+        <p class="callout"><strong>Goal:</strong> reduce candidate pairs and distribute work inside a composable SQL++ query plan.</p>
+      </section>
+
+      <section class="slide" id="contribution" aria-labelledby="title-contribution">
+        <p class="eyebrow">02 · My contribution</p>
+        <h2 id="title-contribution">An optimizer-visible spatial join</h2>
+        <div class="two-col">
+          <div class="card"><h3>Planning</h3><p>Added optimizer rewrites, a spatial partitioning hint, and a physical operator specifying partitioning and ordering.</p></div>
+          <div class="card"><h3>Execution</h3><p>Added a partition-based spatial merge (PBSM) plan and a local plane-sweep runtime.</p></div>
+        </div>
+        <p class="callout">Minimum bounding rectangles (MBRs) filter candidates. The original spatial predicate remains for exact refinement.</p>
+      </section>
+
+      <section class="slide" id="query" aria-labelledby="title-query">
+        <p class="eyebrow">03 · Query and planning</p>
+        <h2 id="title-query">From a predicate to a physical plan</h2>
+        <pre><code>SELECT COUNT(*) FROM ParkSet AS ps, LakeSet AS ls
+WHERE /*+ spatial-partitioning(-180.0, -83.0, 180.0, 90.0, 10, 10) */
+  st_intersects(ps.geom, ls.geom);</code></pre>
+        <div class="two-col">
+          <div class="card"><h3>Optimizer</h3><p>Recognizes an eligible inner join, introduces MBR overlap, and keeps <code>st_intersects</code>.</p></div>
+          <div class="card"><h3>Physical operator</h3><p>Selects <code>SPATIAL_JOIN</code> and requires both inputs to be partitioned and ordered.</p></div>
+        </div>
+        <p class="small">The hint specifies bounds and a 10-by-10 grid. Eligible unhinted joins can compute bounds dynamically and use a default grid.</p>
+      </section>
+
+      <section class="slide" id="execution" aria-labelledby="title-execution">
+        <p class="eyebrow">04 · Distributed execution</p>
+        <h2 id="title-execution">From grid to exact matches</h2>
+        <div class="flow">
+          <div class="step"><span class="number">01</span><h3>Find the grid</h3><p>Use hinted bounds or compute and intersect the inputs' bounds.</p></div>
+          <div class="step"><span class="number">02</span><h3>Tile &amp; shuffle</h3><p>Replicate MBRs across overlapping tiles; partition both sides by tile ID.</p></div>
+          <div class="step"><span class="number">03</span><h3>Sort &amp; sweep</h3><p>Order by tile and rectangle, then generate candidates locally.</p></div>
+          <div class="step"><span class="number">04</span><h3>Refine</h3><p>Use a reference tile to avoid duplicates and apply the exact predicate.</p></div>
+        </div>
+        <p class="small">The dynamic path computes grid information within the query plan and materializes an input branch for reuse.</p>
+      </section>
+
+      <section class="slide" id="sweep" aria-labelledby="title-sweep">
+        <p class="eyebrow">05 · Inside the plane sweep</p>
+        <h2 id="title-sweep">Ordered rectangles narrow the candidate search</h2>
+        <div class="two-col">
+          <div class="card"><h3>Local processing</h3><ul><li>Write the sorted build input to a run file.</li><li>Advance through ordered streams and buffer potentially overlapping probe rectangles.</li><li>Check overlap in both dimensions before emitting a candidate.</li></ul></div>
+          <div class="card"><h3>Bounded memory</h3><p>When the probe buffer fills, the joiner processes buffered tuples against the remaining build run, clears the buffer, and rewinds the build stream.</p></div>
+        </div>
+        <p class="small">Sorting, run-file I/O, buffering, and possible rereads are part of the cost.</p>
+      </section>
+
+      <section class="slide" id="correctness" aria-labelledby="title-correctness">
+        <p class="eyebrow">06 · Correctness</p>
+        <h2 id="title-correctness">One pair, one reference tile</h2>
+        <div class="two-col">
+          <div class="card"><h3>Prevent duplicate pairs</h3><p>For overlapping MBRs A and B, use the lower-left corner of their intersection:</p><pre><code>x = max(A.minX, B.minX)
+y = max(A.minY, B.minY)</code></pre><p>Retain the pair only in the tile containing this reference point.</p></div>
+          <div class="card"><h3>Preserve matches</h3><p>Assign each rectangle to every overlapping tile. MBR overlap is conservative, so the exact geometry predicate must still be checked.</p><p>For supported distance comparisons, expand one MBR by the threshold before filtering.</p></div>
+        </div>
+        <p class="small">Grid hints must cover the region containing the matches of interest.</p>
+      </section>
+
+      <section class="slide" id="skew" aria-labelledby="title-skew">
+        <p class="eyebrow">07 · Performance tradeoffs</p>
+        <h2 id="title-skew">Grid size trades local work for replication</h2>
+        <div class="three-col">
+          <div class="card"><h3>Too coarse</h3><p>Large cells increase local candidate work and can leave workers unevenly loaded.</p></div>
+          <div class="card"><h3>Too fine</h3><p>More cells can increase replication, shuffle, and sorting, especially for large geometries.</p></div>
+          <div class="card"><h3>Skew</h3><p>Dense regions can create hot tiles and stragglers even when total work appears balanced.</p></div>
+        </div>
+        <p class="small">A uniform grid is not a universal solution: both very small and very large grid sizes can perform poorly.</p>
+      </section>
+
+      <section class="slide" id="tests" aria-labelledby="title-tests">
+        <p class="eyebrow">08 · Testing</p>
+        <h2 id="title-tests">Check the plan and the results</h2>
+        <div class="two-col">
+          <div class="card"><h3>Optimizer-plan tests</h3><p>Check static and dynamic partitioning and supported spatial predicates.</p></div>
+          <div class="card"><h3>Runtime tests</h3><p>Execute queries and verify results, including separate spatial left-outer-join cases.</p></div>
+        </div>
+        <p class="small">A spatial function alone does not guarantee that the optimizer will choose this physical plan.</p>
+      </section>
+
+      <section class="slide" id="baseline-method" aria-labelledby="title-baseline-method">
+        <p class="eyebrow">09 · Experiment 1: AsterixDB plans</p>
+        <h2 id="title-baseline-method">Compare the same query with and without the rewrite</h2>
+        <div class="two-col">
+          <div class="card"><h3>Input &amp; setup</h3><p>5,000 rectangles and 250,000 points; 1.25 billion possible pairs. Same files, query, build, and cluster settings.</p><p>Two local nodes, compiler parallelism 4, and a hinted 100-by-100 grid for the optimized plan.</p></div>
+          <div class="card"><h3>Two plans</h3><p>Baseline: <code>NESTED_LOOP</code>, with the geometry rewrite disabled in an isolated optimizer class.</p><p>Optimized: <code>SPATIAL_JOIN</code>. Both returned 124,687 matches, confirmed independently.</p></div>
+        </div>
+        <p class="callout">This is a same-build counterfactual, <strong>not</strong> a benchmark of a historical pre-contribution binary.</p>
+      </section>
+
+      <section class="slide" id="baseline-results" aria-labelledby="title-baseline-results">
+        <p class="eyebrow">10 · Experiment 1: results</p>
+        <h2 id="title-baseline-results">151.056 s → 0.380 s median</h2>
+        <p>About <strong>398× faster</strong> on this input: three measured baseline queries versus six optimized queries across two batches.</p>
+        <figure>
+          <a href="images/asterixdb-before-after-large.png"><img class="experiment-chart" src="images/asterixdb-before-after-large.png" alt="Baseline query times range from 143.778 to 157.152 seconds; optimized times range from 0.339 to 0.504 seconds. The horizontal axis is logarithmic."></a>
+          <figcaption>Client elapsed time; logarithmic axis. <a href="images/asterixdb-before-after-large.csv">Measured timings (CSV)</a>.</figcaption>
+        </figure>
+        <p class="small">One warm-up per batch; baseline ran first. Optimized times declined within batches, and the same synthetic input was reused.</p>
+      </section>
+
+      <section class="slide" id="sedona-method" aria-labelledby="title-sedona-method">
+        <p class="eyebrow">11 · Experiment 2: AsterixDB and Sedona</p>
+        <h2 id="title-sedona-method">Same data, different execution systems</h2>
+        <div class="two-col">
+          <div class="card"><h3>AsterixDB</h3><p>Two local nodes, Java 21, parallelism 4, a fixed 100-by-100 grid, local plane sweep.</p></div>
+          <div class="card"><h3>Sedona</h3><p>Spark 3.5.0 on Java 11, <code>local[4]</code>, eight join partitions, KDB-tree partitioning and local R-trees. Broadcast and experimental plane sweep disabled.</p></div>
+        </div>
+        <p class="small">Both read identical JSON/WKT files. Times include parsing, partitioning, sorting or index construction, exact refinement, and result retrieval; startup and dataset/view setup are excluded.</p>
+      </section>
+
+      <section class="slide" id="sedona-results" aria-labelledby="title-sedona-results">
+        <p class="eyebrow">12 · Experiment 2: results</p>
+        <h2 id="title-sedona-results">The ranking changed with the input</h2>
+        <div class="two-col">
+          <div class="card"><h3>5,000 rectangles · 200,000 points</h3><div class="comparison-metric">0.405 s vs 0.500 s</div><p>AsterixDB vs Sedona medians; 99,612 matches. Three measured queries per engine after one warm-up.</p></div>
+          <div class="card"><h3>25,000 rectangles · 1,000,000 points</h3><div class="comparison-metric">1.970 s vs 1.122 s</div><p>AsterixDB vs Sedona medians; 2,497,991 matches. Thirty measured queries per engine across two batches.</p></div>
+        </div>
+        <p class="callout">AsterixDB was faster on the smaller input; Sedona was faster on the larger one. Both results are local, synthetic workloads.</p>
+      </section>
+
+      <section class="slide" id="sedona-chart" aria-labelledby="title-sedona-chart">
+        <p class="eyebrow">13 · Experiment 2: larger input</p>
+        <h2 id="title-sedona-chart">Show the measured runs, not just the median</h2>
+        <figure>
+          <a href="images/asterixdb-spatial-join-timings.png"><img class="experiment-chart" src="images/asterixdb-spatial-join-timings.png" alt="Thirty measured queries per engine: AsterixDB median 1.970 seconds and Sedona median 1.122 seconds, across two batches."></a>
+          <figcaption>Three warm-ups per batch; order AsterixDB, Sedona, Sedona, AsterixDB. Runs are not paired. <a href="images/asterixdb-spatial-join-timings.csv">Measured timings (CSV)</a>.</figcaption>
+        </figure>
+        <p class="small">The tests reused a single dataset; the engines differ in partitioning, memory settings, JVMs, and execution pipelines.</p>
+      </section>
+
+      <section class="slide" id="interpretation" aria-labelledby="title-interpretation">
+        <p class="eyebrow">14 · Interpretation</p>
+        <h2 id="title-interpretation">What might explain the results?</h2>
+        <div class="three-col">
+          <div class="card"><h3>Partitioning</h3><p>The fixed AsterixDB grid avoids deriving a partitioner; Sedona analyzes the dominant input and builds a KDB-tree partitioner.</p></div>
+          <div class="card"><h3>Local work</h3><p>Plane-sweep sorting and run-file work differ from R-tree construction and probing. Replication and candidate counts may differ too.</p></div>
+          <div class="card"><h3>Overheads</h3><p>Scheduling, JVMs, memory settings, warm-up, and data distribution can affect end-to-end times.</p></div>
+        </div>
+        <p class="callout">These are hypotheses: the experiments did not measure per-stage costs or isolate plane sweep from the rest of each engine.</p>
+      </section>
+
+      <section class="slide" id="selection" aria-labelledby="title-selection">
+        <p class="eyebrow">15 · Algorithm selection</p>
+        <h2 id="title-selection">When might another plan win?</h2>
+        <div class="two-col">
+          <div class="card"><h3>Choose another approach</h3><ul><li>Broadcast nested loop for an input that fits efficiently in memory.</li><li>Index lookup for a highly selective input with a suitable index.</li><li>Avoid a costly grid when replication, shuffle, or skew dominates.</li></ul></div>
+          <div class="card"><h3>Keep semantics safe</h3><p>Unsupported predicate shapes or filters that cannot preserve semantics require another valid plan.</p><p>Actual alternatives depend on the query and implementation.</p></div>
+        </div>
+      </section>
+
+      <section class="slide" id="future" aria-labelledby="title-future">
+        <p class="eyebrow">16 · What I would change</p>
+        <h2 id="title-future">Make join selection and partitioning more adaptive</h2>
+        <div class="three-col">
+          <div class="card"><h3>Cost-based choice</h3><p>Estimate filtered cardinality, spatial distribution, replication, and index availability.</p></div>
+          <div class="card"><h3>Skew-aware execution</h3><p>Explore adaptive grid sizing and compare estimated costs with observed per-worker work.</p></div>
+          <div class="card"><h3>More evidence</h3><p>Test boundaries and duplicates; benchmark varied inputs with matched resources and per-stage measurements.</p></div>
+        </div>
+        <p class="small">These are proposed improvements and tests, not claims about existing behavior.</p>
+      </section>
+
+      <section class="slide" id="references" aria-labelledby="title-references">
+        <p class="eyebrow">References</p>
+        <h2 id="title-references">Explore the work</h2>
+        <div class="references">
+          <p><a href="project-asterixdb.html">Project story and implementation details</a></p>
+          <p><a href="https://github.com/apache/asterixdb/commit/4f1090dde3d5034a90ee1a23d5d536a09372292c">Source contribution: optimized spatial joins</a></p>
+          <p><a href="https://www.cs.ucr.edu/~eldawy/publications/26_SIGSPATIAL_AsterixDB_Industry.pdf">Geospatial Support in Apache AsterixDB</a><br>ACM SIGSPATIAL 2026 · Best Industry Paper Award</p>
+          <p><a href="https://github.com/apache/asterixdb/tree/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-app/src/test/resources/optimizerts/queries/spatial_join">Optimizer tests</a> · <a href="https://github.com/apache/asterixdb/tree/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-app/src/test/resources/runtimets/queries_sqlpp/spatial">Runtime tests</a></p>
+        </div>
+      </section>
+    </main>
+    <div class="progress" aria-hidden="true"><span id="progress"></span></div>
+    <nav class="controls" aria-label="Presentation navigation" hidden>
+      <span id="status" role="status" aria-live="polite"></span>
+      <div class="buttons">
+        <button id="previous" type="button">Previous</button>
+        <button id="next" type="button">Next</button>
+      </div>
+    </nav>
+  </div>
+  <script src="presentation.js"></script>
+</body>
+</html>

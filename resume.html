@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tin Vu - Resume</title>
+  <style>
+    @page { size: letter; margin: .4in .55in; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 10pt; line-height: 1.25; color: #17212b; margin: 0; }
+    h1 { font-size: 22pt; margin: 0 0 2pt; }
+    .subtitle { font-size: 10.5pt; font-weight: bold; margin: 0 0 3pt; }
+    .links { margin: 0; }
+    a { color: #14528b; text-decoration: none; }
+    h2 { font-size: 11pt; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #9aabb8; margin: 6pt 0 3pt; padding-bottom: 2pt; }
+    p { margin: 0 0 3pt; }
+    .project { margin-bottom: 4pt; text-align: justify; }
+    .project strong { color: #17212b; }
+    .experience { display: grid; grid-template-columns: minmax(0, 1fr) max-content; column-gap: 12pt; margin-bottom: 5pt; }
+    .experience p { margin: 0; }
+    .experience .dated-entry { display: contents; }
+    .experience p:not(.dated-entry) { grid-column: 1; }
+    .dated-entry { display: grid; grid-template-columns: minmax(0, 1fr) max-content; column-gap: 12pt; }
+    .date { text-align: right; }
+    .date::before { content: "2019 and 2020"; display: block; height: 0; overflow: hidden; visibility: hidden; }
+    ul { margin: 2pt 0 0; padding-left: 15pt; }
+    li { margin-bottom: 2pt; }
+    @media screen { body { max-width: 7.4in; margin: 24px auto; padding: 0 16px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Tin Vu</h1>
+    <p class="subtitle">Distributed Database Systems | Geospatial Computing | Query Optimization</p>
+    <p class="links"><a href="https://tinvukhac.github.io/">Website</a> | <a href="https://www.linkedin.com/in/tinvukhac/">LinkedIn</a> | <a href="https://github.com/tinvukhac">GitHub</a> | <a href="https://scholar.google.com/citations?hl=en&amp;user=ZpTB-kkAAAAJ&amp;view_op=list_works&amp;sortby=pubdate">Google Scholar</a></p>
+  </header>
+
+  <section>
+    <h2>Profile</h2>
+    <p>Applied Scientist at Microsoft with a PhD in Computer Science from UC Riverside. Work focuses on distributed spatial databases, query optimization, spatial joins, and indexing, including learned approaches to partitioning, join optimization, and sampling.</p>
+  </section>
+
+  <section>
+    <h2>Education</h2>
+    <p class="dated-entry"><span><strong>PhD, Computer Science</strong> - University of California, Riverside; advisor: Ahmed Eldawy</span><span class="date">2021</span></p>
+    <p class="dated-entry"><span><strong>BS, Computer Science</strong> - Hanoi University of Science and Technology</span><span class="date">2013</span></p>
+  </section>
+
+  <section>
+    <h2>Experience</h2>
+    <div class="experience">
+      <p class="dated-entry"><span><strong>Microsoft</strong> | Applied Scientist</span><span class="date">2021 - Present</span></p>
+      <p class="dated-entry"><span>Software Engineer Intern</span><span class="date">2019 and 2020</span></p>
+      <p>Developed query understanding models to improve Bing Maps geocoding quality.</p>
+    </div>
+    <div class="experience">
+      <p class="dated-entry"><span><strong>Environmental Systems Research Institute (Esri)</strong> | Software Development Engineer Intern</span><span class="date">2019</span></p>
+      <p>In the ArcGIS GeoDatabase group, improved Utility Network performance and scalability using parallel processing. Earned 2nd Place overall and the Best Presentation Award at the Esri Intern Hackathon.</p>
+    </div>
+    <div class="experience">
+      <p class="dated-entry"><span><strong>VNG Corporation</strong> | Data Engineer</span><span class="date">2014 - 2016</span></p>
+      <p>Developed a database system for an online game service serving five million customers.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Selected Projects</h2>
+    <p class="project"><strong><a href="https://tinvukhac.github.io/project-asterixdb.html">Optimized Spatial Joins in Apache AsterixDB</a>.</strong> Implemented partition-based spatial merge joins, SQL++ spatial predicates, optimizer rules and partitioning hints, static and dynamic partitioning, and optimizer-plan and runtime tests. A local synthetic benchmark reduced median join time from 151.056 to 0.380 seconds against the same build with the spatial rewrite disabled.</p>
+    <p class="project"><strong><a href="https://tinvukhac.github.io/project-rgrove.html">R-Grove Spatial Indexes for Beast</a>.</strong> Developed R-Grove, R*-Grove, and RR*-Grove indexes for Beast, a geospatial processing system built on Apache Spark. R*-Grove adapts R*-tree splitting and a balance factor to control partition sizes, and combines sampling with a storage-size histogram.</p>
+    <p class="project"><strong><a href="https://tinvukhac.github.io/project-incremental.html">Incremental Spatial Partitioning</a>.</strong> Developed a framework for bulk insertions and deletions with budgeted partition reorganization. Formalized the NP-hard partition-selection problem, implemented R*-tree, LSM-tree, and cost-based strategies, and evaluated query throughput and partition quality.</p>
+    <p class="project"><strong><a href="https://tinvukhac.github.io/project-learned-joins.html">Learned Query Optimizer for Spatial Join</a>.</strong> Developed models for join cardinality and candidate-comparison estimation, algorithm and partitioning selection, and execution parameter tuning. Evaluated the models against baselines on synthetic and real spatial datasets and released code and datasets.</p>
+    <p class="project"><strong><a href="https://tinvukhac.github.io/project-learned-partitioning.html">Learning-Based Spatial Partitioning</a>.</strong> Developed a model to select partitioning techniques from dataset summaries without executing each candidate method. Evaluated six techniques against four quality metrics using spatial histograms and measures of skew.</p>
+  </section>
+
+  <section>
+    <h2>Selected Publications</h2>
+    <ul>
+      <li><a href="https://www.cs.ucr.edu/~eldawy/publications/26_SIGSPATIAL_AsterixDB_Industry.pdf">Geospatial Support in Apache AsterixDB</a> - ACM SIGSPATIAL, 2026; <strong>Best Industry Paper Award.</strong></li>
+      <li><a href="https://doi.org/10.1007/s00778-024-00836-1">A Learning-Based Framework for Spatial Join Processing</a> - The VLDB Journal, 2024.</li>
+      <li><a href="https://doi.org/10.14778/3494124.3494150">Incremental Partitioning for Efficient Spatial Data Analytics</a> - PVLDB, 2022.</li>
+      <li><a href="https://doi.org/10.3389/fdata.2020.00028">R*-Grove: Balanced Spatial Partitioning for Large-Scale Datasets</a> - Frontiers in Big Data, 2020.</li>
+      <li><a href="https://doi.org/10.1145/3274895.3274984">R-Grove: Growing a Family of R-Trees in the Big-Data Forest</a> - ACM SIGSPATIAL, 2018.</li>
+    </ul>
+  </section>
+</body>
+</html>
