@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learning-Based Spatial Partitioning | Tin Vu</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container header-content">
+      <a class="site-name" href="index.html">Tin Vu</a>
+      <nav aria-label="Main navigation"><a href="index.html#work">Projects</a><a href="index.html#research">Publications</a><a href="index.html#about">Experience</a></nav>
+    </div>
+  </header>
+  <main id="main" class="container">
+    <section class="section project-detail">
+      <h1>Learning-Based Spatial Partitioning</h1>
+      <p>I developed a learning-based approach for choosing a spatial partitioning technique from a dataset summary, without physically partitioning each new input with every candidate method.</p>
+      <p><a href="presentation-learned-partitioning.html">View the presentation</a></p>
+
+      <h2>The problem</h2>
+      <p>A spatial partitioner determines how data is distributed across machines and which partitions a query must examine. Grid, tree-based, and space-filling-curve methods respond differently to uniform, clustered, and skewed inputs. The best layout also depends on the objective: a range query may benefit from compact regions, while a parallel scan may care more about balanced partition sizes.</p>
+      <p>There is no universally best technique. Running all candidate partitioners over every new dataset to compare them is expensive, so the goal was to learn from prior examples and select a technique using a compact summary instead.</p>
+
+      <h2>What I implemented</h2>
+      <p>I developed a training and selection pipeline using generated datasets with diverse spatial distributions. For each training dataset, I evaluated six partitioning techniques and computed quality measures to label which technique performed best for a given objective. I compared summaries based on spatial histograms with hand-designed skewness measures, and trained neural-network models to predict a technique from those features.</p>
+      <p>The candidates in the paper include a grid, Kd-tree, STR, Z-curve, R*-Grove, and RR*-tree. The measures include total area, margin, overlap, and variation in partition cardinality; the evaluation also considers average range-query cost. These are distinct objectives, so the selected technique can change with the metric.</p>
+
+      <h2>Training and application</h2>
+      <ol>
+        <li><strong>Generate and summarize.</strong> Create datasets with varied distributions and extract the same kind of histogram or skewness features that can later be computed for a new input.</li>
+        <li><strong>Measure candidates offline.</strong> Apply the candidate partitioners to training datasets and calculate their quality measures. These comparisons supply the labels for model training.</li>
+        <li><strong>Train and select.</strong> Train a model on summaries and labels. For a new dataset and chosen objective, compute its summary and predict a partitioning technique.</li>
+        <li><strong>Partition for execution.</strong> Pass the selected technique to the spatial processing system, which performs the actual partitioning and subsequent distributed operations. The learned selector does not itself execute queries or define their semantics.</li>
+      </ol>
+      <p>The paper describes a Spark-based process for generating training examples. The accompanying code includes data preparation, training, and applying a selector with Beast. Candidate evaluation is expensive offline; the intended saving is avoiding that exhaustive comparison for each new dataset.</p>
+
+      <h2>Correctness and performance tradeoffs</h2>
+      <p>The central tradeoff is summary cost versus useful detail. A compact histogram or a few skewness measures are cheaper to use than physically testing every layout, but may hide features that matter to a particular partitioner. Synthetic training data can cover many patterns while still missing important real-world distributions. The model's predicted label is therefore not a guarantee of the best partitioning.</p>
+      <p>Quality metrics are also proxies for downstream behavior: minimizing overlap or area alone may not minimize the end-to-end cost of a workload. A wrong prediction should affect performance, not change query results; the chosen partitioner and downstream operators remain responsible for correct record assignment, boundary handling, and any needed duplicate avoidance.</p>
+
+      <h2>Evaluation and what I would change</h2>
+      <p>We evaluated prediction accuracy on synthetic and real datasets, comparing histogram-based and skewness-based representations as well as neural-network configurations. The paper compares selection accuracy with a random-choice baseline among six techniques; it reports separate results for synthetic and real inputs, including experiments trained on synthetic data and tested on previously unseen real datasets. Accuracy is measured against the best candidate under a selected quality metric, not as a guarantee of fastest end-to-end query time.</p>
+      <p>Given more time, I would evaluate out-of-distribution detection and confidence-aware fallbacks, measure the combined cost of summarization, partitioning, and subsequent queries, and test with evolving datasets and varied geometry sizes. I would also add differential correctness tests around partition boundaries. These are proposed extensions, not claims about the existing test suite.</p>
+      <p class="project-links"><a href="https://doi.org/10.1145/3402126">Paper (ACM Transactions on Spatial Algorithms and Systems, 2020)</a><a href="https://github.com/tinvukhac/deep-spatial-partitioning">Source code</a></p>
+      <p><a href="index.html#work">Back to selected projects</a></p>
+    </section>
+  </main>
+</body>
+</html>

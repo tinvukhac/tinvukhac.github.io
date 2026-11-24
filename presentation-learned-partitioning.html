@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learning-Based Spatial Partitioning | Presentation</title>
+  <link rel="stylesheet" href="presentation.css">
+</head>
+<body>
+  <div class="deck">
+    <header class="topbar"><a href="project-learned-partitioning.html">← Learned partitioning project</a><span>Tin Vu · Spatial data systems</span></header>
+    <main>
+      <section class="slide" id="intro" aria-labelledby="title-intro">
+        <p class="eyebrow">A technical story</p>
+        <h1 id="title-intro">Learning-based spatial partitioning</h1>
+        <p class="lead">Choose a spatial partitioner from a dataset summary instead of trying every candidate on the full input.</p>
+        <p class="author">Tin Vu</p>
+        <p class="small">Use the arrow keys or the controls below to navigate.</p>
+      </section>
+      <section class="slide" id="problem" aria-labelledby="title-problem">
+        <p class="eyebrow">01 · The problem</p>
+        <h2 id="title-problem">The right partitioner depends on the data and the goal</h2>
+        <div class="three-col">
+          <div class="card"><h3>Distribution</h3><p>Uniform, clustered, and skewed datasets can favor different techniques.</p></div>
+          <div class="card"><h3>Quality metric</h3><p>Overlap, partition shape, and load balance capture different priorities.</p></div>
+          <div class="card"><h3>Selection cost</h3><p>Physically partitioning the full input with every candidate just to pick one is expensive.</p></div>
+        </div>
+        <p class="callout"><strong>Goal:</strong> predict a suitable technique for the input and chosen metric using a compact summary.</p>
+      </section>
+      <section class="slide" id="contribution" aria-labelledby="title-contribution">
+        <p class="eyebrow">02 · My contribution</p>
+        <h2 id="title-contribution">Learn the relationship between distribution and partition quality</h2>
+        <div class="two-col">
+          <div class="card"><h3>Offline training</h3><p>I generated varied datasets, evaluated six partitioning techniques against four quality metrics, and trained models on summaries and quality results.</p></div>
+          <div class="card"><h3>Application</h3><p>For a new dataset and selected quality metric, the trained model predicts a partitioning technique without running all candidates on that input.</p></div>
+        </div>
+        <p class="small">The accompanying code supports data preparation, model training, and applying a selector with Beast.</p>
+      </section>
+      <section class="slide" id="pipeline" aria-labelledby="title-pipeline">
+        <p class="eyebrow">03 · Training and application</p>
+        <h2 id="title-pipeline">Move comparison work offline</h2>
+        <div class="flow">
+          <div class="step"><span class="number">01</span><h3>Generate</h3><p>Create training datasets with diverse spatial distributions.</p></div>
+          <div class="step"><span class="number">02</span><h3>Measure</h3><p>Apply candidate partitioners and compute their quality metrics.</p></div>
+          <div class="step"><span class="number">03</span><h3>Train</h3><p>Learn from histogram and skew summaries paired with quality results.</p></div>
+          <div class="step"><span class="number">04</span><h3>Predict</h3><p>Summarize a new dataset and select a technique for the chosen metric.</p></div>
+        </div>
+        <p class="small">Offline candidate evaluation is part of training; prediction avoids repeating that exhaustive comparison for each new dataset.</p>
+      </section>
+      <section class="slide" id="metrics" aria-labelledby="title-metrics">
+        <p class="eyebrow">04 · Partition quality</p>
+        <h2 id="title-metrics">Different metrics reward different properties</h2>
+        <div class="three-col">
+          <div class="card"><h3>Area and margin</h3><p>Capture aspects of the spatial extent and shape of partitions.</p></div>
+          <div class="card"><h3>Overlap</h3><p>Reflects how much partition regions overlap, which can affect query work.</p></div>
+          <div class="card"><h3>Cardinality variation</h3><p>Measures differences in partition sizes, relevant to balancing work.</p></div>
+        </div>
+        <p class="callout">A technique selected for one metric need not be the best choice for another.</p>
+      </section>
+      <section class="slide" id="tradeoffs" aria-labelledby="title-tradeoffs">
+        <p class="eyebrow">05 · Tradeoffs</p>
+        <h2 id="title-tradeoffs">A summary is cheaper than an exhaustive search, but not free</h2>
+        <div class="two-col">
+          <div class="card"><h3>Summary fidelity</h3><p>Histograms and skew measures compress the dataset; details lost in that summary may affect the prediction.</p></div>
+          <div class="card"><h3>Training coverage</h3><p>New distributions may differ from generated training data, and the chosen quality metric is a proxy for the eventual workload.</p></div>
+        </div>
+        <p class="small">The selector predicts a technique; it does not guarantee the optimal result for every unseen dataset.</p>
+      </section>
+      <section class="slide" id="evaluation" aria-labelledby="title-evaluation">
+        <p class="eyebrow">06 · Evaluation</p>
+        <h2 id="title-evaluation">Compare prediction accuracy with a baseline</h2>
+        <div class="two-col">
+          <div class="card"><h3>Data</h3><p>Experiments use synthetic and real spatial datasets to evaluate the selector.</p></div>
+          <div class="card"><h3>Result</h3><p>The paper reports better partitioner-selection accuracy than its baseline; the comparison is specific to its datasets, metrics, and models.</p></div>
+        </div>
+        <p class="small">Prediction accuracy and end-to-end query performance are related but distinct measures.</p>
+      </section>
+      <section class="slide" id="future" aria-labelledby="title-future">
+        <p class="eyebrow">07 · Further directions</p>
+        <h2 id="title-future">Evaluate the choice against real workloads</h2>
+        <div class="three-col">
+          <div class="card"><h3>Beyond training</h3><p>Evaluate generalization to changing and previously unseen spatial distributions.</p></div>
+          <div class="card"><h3>End-to-end cost</h3><p>Compare selection, partitioning, and subsequent query costs together.</p></div>
+          <div class="card"><h3>Confidence</h3><p>Explore fallbacks or additional measurements when the prediction is uncertain.</p></div>
+        </div>
+        <p class="small">These are possible directions, not claims about the existing implementation.</p>
+      </section>
+      <section class="slide" id="references" aria-labelledby="title-references">
+        <p class="eyebrow">References</p>
+        <h2 id="title-references">Explore the work</h2>
+        <div class="references">
+          <p><a href="project-learned-partitioning.html">Project page</a></p>
+          <p><a href="https://doi.org/10.1145/3402126">Using Deep Learning for Big Spatial Data Partitioning</a><br>ACM Transactions on Spatial Algorithms and Systems, 2020</p>
+          <p><a href="https://github.com/tinvukhac/deep-spatial-partitioning">Source code</a></p>
+        </div>
+      </section>
+    </main>
+    <div class="progress" aria-hidden="true"><span id="progress"></span></div>
+    <nav class="controls" aria-label="Presentation navigation" hidden><span id="status" role="status" aria-live="polite"></span><div class="buttons"><button id="previous" type="button">Previous</button><button id="next" type="button">Next</button></div></nav>
+  </div>
+  <script src="presentation.js"></script>
+</body>
+</html>

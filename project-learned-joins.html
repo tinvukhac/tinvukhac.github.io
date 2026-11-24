@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learned Query Optimizer for Spatial Join | Tin Vu</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container header-content">
+      <a class="site-name" href="index.html">Tin Vu</a>
+      <nav aria-label="Main navigation"><a href="index.html#work">Projects</a><a href="index.html#research">Publications</a><a href="index.html#about">Experience</a></nav>
+    </div>
+  </header>
+  <main id="main" class="container">
+    <section class="section project-detail">
+      <h1>Learned Query Optimizer for Spatial Join</h1>
+      <p>I developed a learning-based optimizer for distributed spatial joins. The project estimates join behavior from dataset summaries and uses learned models to guide algorithm selection and execution parameters.</p>
+      <p><a href="presentation-learned-joins.html">View the presentation</a></p>
+
+      <h2>The problem</h2>
+      <p>Spatial join performance depends on more than the size of each input. Spatial skew, the relationship between the two distributions, existing indexes, and the expense of repartitioning all affect the best plan. A block nested-loop join can be competitive for a small input, while an indexed or partition-based join can reduce comparisons in other cases. A fixed rule or a cost formula designed around uniform data can make poor choices on skewed inputs.</p>
+      <p>Trying every candidate join before running the actual query would defeat the purpose of optimization. I wanted to estimate useful quantities and choose a plan from relatively inexpensive summaries, including information about how the two datasets relate to one another.</p>
+
+      <h2>What I implemented</h2>
+      <p>I developed models that estimate spatial join cardinality and the number of bounding-rectangle comparisons, and a model that predicts a join strategy. The later <a href="https://doi.org/10.1007/s00778-024-00836-1">2024 framework</a> extends the approach to tune the number of partitions for partition-based spatial merge (PBSM) and choose the local plane-sweep direction.</p>
+      <p>The inputs include dataset statistics, spatial distribution and skew features, partitioning information, and a combined histogram capturing the relationship between the datasets. The models are modular: cardinality estimation, algorithm-specific comparison estimates, strategy selection, and parameter tuning can be used separately rather than treated as a single opaque runtime.</p>
+
+      <h2>From training to distributed execution</h2>
+      <ol>
+        <li><strong>Generate training observations.</strong> Run candidate joins on pairs of synthetic and real datasets, extract features, and record their behavior. Vary partition counts and local sweep directions to train the tuning models.</li>
+        <li><strong>Estimate and select.</strong> For a new pair of inputs, compute corresponding summaries. The estimation models predict result size and comparison work; a separate selection model recommends a strategy among the supported alternatives.</li>
+        <li><strong>Partition when needed.</strong> The selected join may use existing spatial indexes, repartition one input, build a common PBSM grid, or avoid spatial partitioning. The partition-count model applies when both inputs are repartitioned for PBSM.</li>
+        <li><strong>Process local joins.</strong> Once partition pairs have been assigned for parallel execution, the framework can choose an <code>x</code>- or <code>y</code>-axis plane sweep for each local join. The selected join implementation, not the predictive model, performs the actual spatial comparisons.</li>
+      </ol>
+      <p>The 2024 study considers block nested-loop, indexed distributed, repartition, and partition-based spatial merge joins. Each has different prerequisites: for example, an indexed join needs suitable input partitioning, whereas PBSM can work on unindexed data but pays for repartitioning.</p>
+
+      <h2>Correctness and performance tradeoffs</h2>
+      <p>One challenge is to capture enough of both inputs' joint distribution without making feature extraction as expensive as the join. A summary can miss fine-grained geometry or skew, while richer features cost more to compute and maintain. Cardinality and comparison counts are useful signals, but neither alone captures every source of runtime cost, such as data movement, storage, geometry complexity, or worker imbalance.</p>
+      <p>The choice is a performance prediction, not a change to the meaning of the spatial predicate. Any selected algorithm must remain eligible for the input layout and preserve the query's exact join semantics. A model trained on one family of geometries or workloads should not be assumed to generalize without evaluation; a simpler valid plan may be preferable when predictions are unreliable or repartitioning dominates.</p>
+
+      <h2>Evaluation and what I would change</h2>
+      <p>We compared the models with baselines using synthetic and real spatial datasets, measuring cardinality and comparison estimates, algorithm-selection accuracy, and parameter choices. The 2024 experiments ran the four joins on Beast with a Spark cluster; their evaluated spatial predicate was intersection, using point and rectangle datasets. The results are evidence for those workloads, not a guarantee of the best plan for arbitrary geometries or predicates. The project also released datasets, code, and baseline models.</p>
+      <p>Given more time, I would evaluate unseen distributions and complex geometries, compare predictions with end-to-end costs including shuffle and skew, and explore confidence-aware fallback plans and feedback from observed execution. I would test that every eligible plan returns the same results as a simple baseline. These are proposed extensions, not claims about existing behavior or test coverage.</p>
+      <p class="project-links"><a href="https://doi.org/10.1007/s00778-024-00836-1">Paper (The VLDB Journal, 2024)</a><a href="https://doi.org/10.1145/3511808.3557712">Paper (ACM CIKM, 2022)</a><a href="https://doi.org/10.1145/3474717.3484217">Paper (ACM SIGSPATIAL, 2021)</a><a href="https://github.com/tinvukhac/learned-spatial-join">Source code (2024)</a><a href="https://github.com/tinvukhac/sjml-resources">Source code (2021–22)</a></p>
+      <p><a href="index.html#work">Back to selected projects</a></p>
+    </section>
+  </main>
+</body>
+</html>

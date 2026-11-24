@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>R-Grove Spatial Partitioning | Presentation</title>
+  <link rel="stylesheet" href="presentation.css">
+</head>
+<body>
+  <div class="deck">
+    <header class="topbar"><a href="project-rgrove.html">← R-Grove project</a><span>Tin Vu · Spatial data systems</span></header>
+    <main>
+      <section class="slide" id="intro" aria-labelledby="title-intro">
+        <p class="eyebrow">A technical story</p>
+        <h1 id="title-intro">R-Grove: spatial partitioning for distributed data</h1>
+        <p class="lead">Adapting R-tree ideas to organize large spatial datasets across machines.</p>
+        <p class="author">Tin Vu</p>
+        <p class="small">Use the arrow keys or the controls below to navigate.</p>
+      </section>
+      <section class="slide" id="problem" aria-labelledby="title-problem">
+        <p class="eyebrow">01 · The problem</p>
+        <h2 id="title-problem">A good local index is not automatically a good distributed partitioner</h2>
+        <div class="three-col">
+          <div class="card"><h3>Load balance</h3><p>Uneven partitions create unequal work and slow distributed jobs.</p></div>
+          <div class="card"><h3>Spatial quality</h3><p>Partition shapes and overlap affect how much data a spatial query must examine.</p></div>
+          <div class="card"><h3>Coverage</h3><p>Boundaries based only on a sample must still handle records not represented by that sample.</p></div>
+        </div>
+        <p class="callout">Treating an R-tree built on a sample as a black box can leave gaps or produce poorly balanced partitions.</p>
+      </section>
+      <section class="slide" id="contribution" aria-labelledby="title-contribution">
+        <p class="eyebrow">02 · My contribution</p>
+        <h2 id="title-contribution">Grow a family of distributed spatial indexes</h2>
+        <div class="two-col">
+          <div class="card"><h3>Grove family</h3><p>I developed R-Grove, R*-Grove, and RR*-Grove, adapting the main ideas of their R-tree counterparts to big spatial data.</p></div>
+          <div class="card"><h3>System integration</h3><p>The methods are available in <a href="https://bitbucket.org/bdlabucr/beast/src/master/">Beast</a>, a distributed geospatial processing system built on Apache Spark.</p></div>
+        </div>
+        <p class="small">The goal is spatially useful partitions for distributed processing, rather than a record-level search tree on one machine.</p>
+      </section>
+      <section class="slide" id="execution" aria-labelledby="title-execution">
+        <p class="eyebrow">03 · How it works</p>
+        <h2 id="title-execution">Use samples to build boundaries, then partition the data</h2>
+        <div class="flow">
+          <div class="step"><span class="number">01</span><h3>Sample</h3><p>Draw a manageable sample of the input dataset.</p></div>
+          <div class="step"><span class="number">02</span><h3>Split</h3><p>Apply adapted R-tree splitting to form balanced spatial partitions.</p></div>
+          <div class="step"><span class="number">03</span><h3>Track boundaries</h3><p>R*-Grove and RR*-Grove can use split history to define disjoint regions.</p></div>
+          <div class="step"><span class="number">04</span><h3>Distribute</h3><p>Assign the full dataset to the resulting spatial partitions for processing.</p></div>
+        </div>
+        <p class="small">For R*-Grove and RR*-Grove, split history maintains coverage and disjoint partition regions; geometries crossing boundaries can still be replicated.</p>
+      </section>
+      <section class="slide" id="quality" aria-labelledby="title-quality">
+        <p class="eyebrow">04 · Design tradeoffs</p>
+        <h2 id="title-quality">Balance partition size with spatial shape</h2>
+        <div class="three-col">
+          <div class="card"><h3>Balance</h3><p>R*-Grove uses a balance factor to limit differences in partition sizes.</p></div>
+          <div class="card"><h3>Shape</h3><p>R*-tree-inspired splits aim for spatially useful regions, not merely equal record counts.</p></div>
+          <div class="card"><h3>Record size</h3><p>A sample can be combined with a storage-size histogram to account for records with different sizes.</p></div>
+        </div>
+        <p class="callout">The best balance depends on the data and workload: equal-sized partitions alone do not guarantee low query cost.</p>
+      </section>
+      <section class="slide" id="evaluation" aria-labelledby="title-evaluation">
+        <p class="eyebrow">05 · Evaluation</p>
+        <h2 id="title-evaluation">Measure both partition quality and query performance</h2>
+        <div class="two-col">
+          <div class="card"><h3>Partition behavior</h3><p>The research examines the effects of spatial distribution and partitioning choices on the resulting partitions.</p></div>
+          <div class="card"><h3>Downstream work</h3><p>Experiments on large spatial datasets evaluate partition quality and query performance; the papers describe the datasets and comparisons.</p></div>
+        </div>
+        <p class="small">Results are workload-specific; no single partitioner is assumed to be best for all distributions.</p>
+      </section>
+      <section class="slide" id="future" aria-labelledby="title-future">
+        <p class="eyebrow">06 · Further directions</p>
+        <h2 id="title-future">Choosing and maintaining partitions remains a systems problem</h2>
+        <div class="three-col">
+          <div class="card"><h3>Representativeness</h3><p>Study how sample size affects the resulting boundaries on skewed data.</p></div>
+          <div class="card"><h3>Workloads</h3><p>Compare partition choices across range queries, joins, and changing workloads.</p></div>
+          <div class="card"><h3>Change over time</h3><p>Explore when evolving data calls for incremental reorganization.</p></div>
+        </div>
+        <p class="small">These are possible directions, not claims about the existing implementation.</p>
+      </section>
+      <section class="slide" id="references" aria-labelledby="title-references">
+        <p class="eyebrow">References</p>
+        <h2 id="title-references">Explore the work</h2>
+        <div class="references">
+          <p><a href="project-rgrove.html">Project page</a> · <a href="https://bitbucket.org/bdlabucr/beast/src/master/">Beast source code</a></p>
+          <p><a href="https://doi.org/10.1145/3274895.3274984">R-Grove: Growing a Family of R-trees in the Big-Data Forest</a><br>ACM SIGSPATIAL, 2018</p>
+          <p><a href="https://doi.org/10.3389/fdata.2020.00028">R*-Grove paper</a> · Frontiers in Big Data, 2020</p>
+          <p><a href="https://doi.org/10.1145/3459637.3481897">Beast paper</a> · ACM CIKM, 2021</p>
+        </div>
+      </section>
+    </main>
+    <div class="progress" aria-hidden="true"><span id="progress"></span></div>
+    <nav class="controls" aria-label="Presentation navigation" hidden><span id="status" role="status" aria-live="polite"></span><div class="buttons"><button id="previous" type="button">Previous</button><button id="next" type="button">Next</button></div></nav>
+  </div>
+  <script src="presentation.js"></script>
+</body>
+</html>

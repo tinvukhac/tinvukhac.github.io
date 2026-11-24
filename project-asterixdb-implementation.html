@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spatial Join Implementation Walkthrough | Tin Vu</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .implementation-detail pre { padding: 1rem; background: #f3f5f7; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .implementation-detail code { overflow-wrap: anywhere; }
+    .implementation-detail blockquote { margin: 1rem 0; padding: .5rem 1rem; border-left: 3px solid #14528b; background: #f3f5f7; }
+    .implementation-detail blockquote p:last-child { margin-bottom: 0; }
+    .implementation-detail table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+    .implementation-detail th, .implementation-detail td { padding: .7rem; border: 1px solid #dce2e7; text-align: left; vertical-align: top; }
+    .implementation-detail h3 { margin-top: 1.2rem; }
+    @media print {
+      .site-header, .skip-link, .implementation-contents { display: none; }
+      .container { width: 100%; }
+      pre, blockquote, tr { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container header-content">
+      <a class="site-name" href="index.html">Tin Vu</a>
+      <nav aria-label="Main navigation"><a href="index.html#work">Projects</a><a href="index.html#research">Publications</a><a href="index.html#about">Experience</a></nav>
+    </div>
+  </header>
+  <main id="main" class="container">
+    <article class="section project-detail implementation-detail">
+      <p><a href="project-asterixdb.html">Back to the AsterixDB project</a></p>
+      <h1>How I implemented spatial join in AsterixDB</h1>
+      <p>I implemented a distributed partition-based spatial merge (PBSM) join and integrated it end-to-end into AsterixDB's optimizer and Hyracks execution engine, rather than adding only a standalone geometry algorithm.</p>
+      <p>This walkthrough follows <a href="https://github.com/apache/asterixdb/commit/4f1090dde3d5034a90ee1a23d5d536a09372292c">commit <code>4f1090d</code>, [ASTERIXDB-2839] Added Optimized Spatial Joins</a>. It describes the logical implementation flow, not the chronological order in which the files were written. For experiments and measured performance, see the <a href="project-asterixdb.html#local-experiments">project page's local experiments</a>.</p>
+
+      <div class="implementation-contents" role="navigation" aria-label="Walkthrough contents">
+        <h2>Contents</h2>
+        <ol>
+          <li><a href="#short-answer">The short explanation</a></li>
+          <li><a href="#implementation">Step-by-step implementation</a></li>
+          <li><a href="#execution-flow">The complete execution flow</a></li>
+          <li><a href="#follow-up-questions">Design questions and limitations</a></li>
+        </ol>
+      </div>
+
+      <h2 id="short-answer">The short explanation</h2>
+      <blockquote>
+        <p>I implemented Partition-Based Spatial-Merge Join, or PBSM, in AsterixDB. The idea is to avoid comparing every object from one dataset with every object from the other.</p>
+        <p>I added optimizer rules that recognize supported spatial predicates and transform them into a filter-and-refine plan. We first use minimum bounding rectangles to generate candidates cheaply, then evaluate the original geometry predicate for accuracy.</p>
+        <p>For distributed execution, I partitioned the spatial domain into grid cells, replicated each object into the cells its bounding rectangle overlaps, and redistributed both inputs by cell ID. Within each worker, I used a sorted plane-sweep join to reduce local comparisons.</p>
+        <p>Replication can produce the same pair in multiple cells, so I added a reference-point ownership rule to emit each pair only once. I also implemented bounded-memory execution using a disk-backed run file, supported automatic or user-specified partitioning, and added optimizer-plan and runtime regression tests.</p>
+      </blockquote>
+
+      <h2 id="implementation">Step-by-step implementation</h2>
+      <h3 id="recognition">1. Teach the optimizer to recognize spatial joins</h3>
+      <p>I connected spatial-join selection to <code>AsterixJoinUtils</code> and added rewrite rules to the optimizer's rule collections. The implementation supports rectangle intersection directly and introduces filter/refine rewrites for geometry predicates such as:</p>
+      <pre><code>st_intersects(a.geom, b.geom)
+st_contains(a.geom, b.geom)
+st_within(a.geom, b.geom)</code></pre>
+      <p>I also extended function extraction so expressions used by the rectangle-intersection predicate can become variables available on the appropriate input branches.</p>
+      <p>The first part was compiler integration: recognize eligible spatial joins and construct a specialized physical plan instead of treating the predicate as an arbitrary function.</p>
+      <p><strong>Implementation:</strong> <a href="https://github.com/apache/asterixdb/blob/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-algebra/src/main/java/org/apache/asterix/optimizer/rules/util/AsterixJoinUtils.java"><code>AsterixJoinUtils</code></a>, <code>RuleCollections</code>, and <code>AsterixExtractFunctionsFromJoinConditionRule</code>.</p>
+
+      <h3 id="filter-refine">2. Separate cheap candidate filtering from exact geometry evaluation</h3>
+      <p>For a predicate such as <code>st_intersects(a.geom, b.geom)</code>, the rewrite adds a necessary bounding-box condition. Conceptually:</p>
+      <pre><code>spatial_intersect(MBR(a.geom), MBR(b.geom))
+AND st_intersects(a.geom, b.geom)</code></pre>
+      <p>The rectangle test generates candidates; the original function remains responsible for the exact answer. Overlapping bounding boxes alone do not prove that two complex geometries intersect.</p>
+      <p>For supported distance comparisons such as:</p>
+      <pre><code>st_distance(a.geom, b.geom) &lt;= d</code></pre>
+      <p>where <code>d</code> is constant, I enlarge one geometry's MBR by <code>d</code>, intersect it with the other MBR, and retain the original distance comparison as refinement. The rule recognizes <code>&lt;</code>, <code>&lt;=</code>, and <code>=</code> in that expression shape.</p>
+      <p><strong>Implementation:</strong> <a href="https://github.com/apache/asterixdb/blob/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-algebra/src/main/java/org/apache/asterix/optimizer/rules/FilterRefineSpatialJoinRuleForSTFunctions.java"><code>FilterRefineSpatialJoinRuleForSTFunctions</code></a> and <a href="https://github.com/apache/asterixdb/blob/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-algebra/src/main/java/org/apache/asterix/optimizer/rules/FilterRefineSpatialJoinRuleForSTDistanceFunction.java"><code>FilterRefineSpatialJoinRuleForSTDistanceFunction</code></a>.</p>
+
+      <h3 id="grid">3. Establish a shared grid for both datasets</h3>
+      <p>Both inputs must use the same spatial partitioning scheme. I implemented two paths:</p>
+      <table>
+        <thead><tr><th scope="col">Path</th><th scope="col">How the grid is established</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Static</th><td>A <code>spatial-partitioning(minX, minY, maxX, maxY, rows, columns)</code> hint supplies the bounds and grid dimensions. The bounds must cover the region containing the matches of interest.</td></tr>
+          <tr><th scope="row">Dynamic</th><td>Local/global MBR aggregates compute each input's overall bounds. Their <strong>intersection</strong> becomes the partitioning region, using a default <strong>100-by-100</strong> grid.</td></tr>
+        </tbody>
+      </table>
+      <p>The dynamic path replicates each input into an aggregation branch and a materialized data branch. Once the common bounds are available, the data can proceed using those bounds. The small spatial summary is broadcast, not both complete datasets.</p>
+      <p>I supported automatic partitioning, but also exposed a hint so users who know their data can avoid the dynamic-summary overhead and tune the grid.</p>
+      <p><strong>Implementation:</strong> <a href="https://github.com/apache/asterixdb/blob/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-algebra/src/main/java/org/apache/asterix/optimizer/rules/util/SpatialJoinUtils.java"><code>SpatialJoinUtils</code></a>.</p>
+
+      <h3 id="replication">4. Replicate objects into overlapping cells and redistribute them</h3>
+      <p>I introduced the <code>spatial-tile</code> unnesting function. For each rectangle, it emits the IDs of the grid cells it overlaps. Conceptually:</p>
+      <pre><code>Object A overlaps cells 7 and 8
+    &rarr; (7, A)
+    &rarr; (8, A)</code></pre>
+      <p>Replicating boundary-crossing objects is necessary: assigning an object to only one cell could miss matches in another cell.</p>
+      <p>Both inputs are then <strong>hash-partitioned by tile ID</strong>, bringing corresponding cells together. A worker can process multiple cells; a grid cell is not the same thing as a machine.</p>
+      <p><strong>Implementation:</strong> <a href="https://github.com/apache/asterixdb/blob/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-runtime/src/main/java/org/apache/asterix/runtime/unnestingfunctions/std/SpatialTileDescriptor.java"><code>SpatialTileDescriptor</code></a>.</p>
+
+      <h3 id="plane-sweep">5. Declare ordering requirements and execute a local plane sweep</h3>
+      <p><code>SpatialJoinPOperator</code> declares that both inputs must be partitioned by tile ID and sorted by tile ID, then rectangle order, which begins with the rectangle's minimum X coordinate.</p>
+      <p>AsterixDB's physical-property machinery supplies the necessary exchanges and sorts. The runtime operator then processes matching tiles using a plane sweep.</p>
+      <p>Conceptually, it advances through X-ordered rectangles, retains potentially relevant probe rectangles, removes rectangles that can no longer match, and stops scanning candidates when later rectangles are too far to the right. Surviving pairs receive the rectangle-overlap test, including Y overlap.</p>
+      <p><strong>The grid reduces comparisons globally, and the plane sweep reduces comparisons locally.</strong> They solve different parts of the problem.</p>
+      <p><strong>Implementation:</strong> <a href="https://github.com/apache/asterixdb/blob/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-algebra/src/main/java/org/apache/asterix/algebra/operators/physical/SpatialJoinPOperator.java"><code>SpatialJoinPOperator</code></a>, <a href="https://github.com/apache/asterixdb/blob/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-runtime/src/main/java/org/apache/asterix/runtime/operators/joins/spatial/PlaneSweepJoinOperatorDescriptor.java"><code>PlaneSweepJoinOperatorDescriptor</code></a>, and <a href="https://github.com/apache/asterixdb/blob/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-runtime/src/main/java/org/apache/asterix/runtime/operators/joins/spatial/utils/IntersectSpatialJoinUtil.java"><code>IntersectSpatialJoinUtil</code></a>.</p>
+
+      <h3 id="memory">6. Make the runtime work with bounded memory</h3>
+      <p>This implementation does not assume every partition fits in RAM. The Hyracks operator has separate build and probe activities. The build activity materializes its input into a run file; the probe activity streams the other input and maintains an in-memory candidate buffer.</p>
+      <p>When that buffer fills, the implementation processes buffered candidates against the remaining relevant build stream, clears the buffer, and restores the saved build position before continuing.</p>
+      <p>I integrated the algorithm with Hyracks' frame and tuple-buffer infrastructure and used a disk-backed build stream so execution could continue under a fixed memory budget.</p>
+      <p><strong>Implementation:</strong> <a href="https://github.com/apache/asterixdb/blob/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-runtime/src/main/java/org/apache/asterix/runtime/operators/joins/spatial/SpatialJoiner.java"><code>SpatialJoiner</code></a>.</p>
+
+      <h3 id="duplicates">7. Eliminate duplicates introduced by spatial replication</h3>
+      <p>Two objects may overlap several shared cells, producing the same candidate pair repeatedly. I compute a deterministic reference point from their rectangles:</p>
+      <pre><code>referenceX = max(a.minX, b.minX)
+referenceY = max(a.minY, b.minY)</code></pre>
+      <p>For intersecting rectangles, this is the lower-left corner of their intersection. The cell containing that point owns the pair; only that cell's copy is retained.</p>
+      <p>This avoids a global <code>DISTINCT</code> or a distributed set of previously emitted pairs. It eliminates <strong>replication-created duplicates</strong>, rather than removing legitimate duplicate input rows.</p>
+      <p><strong>Implementation:</strong> <a href="https://github.com/apache/asterixdb/blob/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-runtime/src/main/java/org/apache/asterix/runtime/evaluators/functions/ReferenceTileDescriptor.java"><code>ReferenceTileDescriptor</code></a>.</p>
+
+      <h3 id="refinement-tests">8. Apply refinement and validate the integration</h3>
+      <p><code>PullSelectOutOfSpatialJoin</code> moves predicates other than the rectangle-intersection condition into a selection above the specialized join. That preserves the original exact geometry predicate and other conditions while keeping the local operator specialized.</p>
+      <p>I added expected optimizer plans showing the unnest &rarr; hash exchange &rarr; sort &rarr; spatial join pipeline, plus runtime cases for static partitioning, dynamic partitioning, hints, and a left-outer-join regression case. The latter is not evidence that the new PBSM path optimizes outer joins; the filter/refine rewrite rules explicitly target inner joins.</p>
+      <p><strong>Implementation:</strong> <a href="https://github.com/apache/asterixdb/blob/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-algebra/src/main/java/org/apache/asterix/optimizer/rules/PullSelectOutOfSpatialJoin.java"><code>PullSelectOutOfSpatialJoin</code></a>, <a href="https://github.com/apache/asterixdb/tree/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-app/src/test/resources/optimizerts/queries/spatial_join">optimizer-plan tests</a>, and <a href="https://github.com/apache/asterixdb/tree/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-app/src/test/resources/runtimets/queries_sqlpp/spatial">runtime tests</a>.</p>
+
+      <h2 id="execution-flow">The complete execution flow</h2>
+      <pre><code>SQL++ spatial join
+    &rarr; recognize predicate and add MBR filter
+    &rarr; establish shared grid bounds
+    &rarr; emit one tuple per overlapping tile
+    &rarr; redistribute both inputs by tile ID
+    &rarr; sort locally by tile ID and rectangle order
+    &rarr; plane-sweep rectangle join
+    &rarr; reference-tile duplicate elimination
+      and exact-predicate refinement
+    &rarr; query result</code></pre>
+      <p>The precise placement of duplicate elimination differs between the static and dynamic plans.</p>
+
+      <h2 id="follow-up-questions">Design questions and limitations</h2>
+      <h3>Is this an R-tree join?</h3>
+      <p>No. This commit implements <strong>grid-partitioned PBSM with a local plane sweep</strong>, without requiring a prebuilt spatial index.</p>
+      <h3>Is it always faster or always O(n log n)?</h3>
+      <p>No. It reduces unnecessary comparisons when partitioning and spatial selectivity are favorable. Sorting, redistribution, replication, dynamic materialization, skew, and large overlapping objects all affect performance. Dense overlap can still produce quadratic candidate work or output.</p>
+      <h3>Was the hint required?</h3>
+      <p>Not in the committed implementation. Although the commit message says it was, the code and <a href="https://github.com/apache/asterixdb/blob/4f1090dde3d5034a90ee1a23d5d536a09372292c/asterixdb/asterix-app/src/test/resources/runtimets/queries_sqlpp/spatial/spatial_join_dynamic_partitioning/spatial_join_dynamic_partitioning.3.query.sqlpp">no-hint runtime test</a> implement the dynamic path.</p>
+      <h3>What was the main engineering contribution?</h3>
+      <blockquote><p>I took a spatial-join algorithm and made it a native distributed database feature: predicate rewrites, physical planning, partitioning and ordering requirements, memory-aware execution, duplicate handling, and regression coverage.</p></blockquote>
+      <p><a href="project-asterixdb.html">Back to the AsterixDB project and benchmarks</a></p>
+    </article>
+  </main>
+</body>
+</html>
